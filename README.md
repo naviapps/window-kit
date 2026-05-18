@@ -4,7 +4,6 @@
 [![CI](https://github.com/naviapps/window-kit/actions/workflows/ci.yml/badge.svg)](https://github.com/naviapps/window-kit/actions/workflows/ci.yml)
 [![Swift versions](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fnaviapps%2Fwindow-kit%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/naviapps/window-kit)
 [![Supported platforms](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fnaviapps%2Fwindow-kit%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/naviapps/window-kit)
-[![Documentation](https://img.shields.io/badge/DocC-Swift%20Package%20Index-blue)](https://swiftpackageindex.com/naviapps/window-kit/main/documentation/windowkit)
 
 WindowKit is a Swift package for macOS window discovery, querying, hit-testing, placement, and
 live window control.
@@ -20,13 +19,6 @@ The package is split into two libraries:
   control/provider protocols.
 - `WindowKitAppKit`: live AppKit and Accessibility implementations plus AX-specific window role
   metadata.
-
-Documentation:
-
-- [WindowKit DocC](https://swiftpackageindex.com/naviapps/window-kit/main/documentation/windowkit)
-- [WindowKitAppKit DocC](https://swiftpackageindex.com/naviapps/window-kit/main/documentation/windowkitappkit)
-- Source catalogs: [WindowKit.docc](Sources/WindowKit/WindowKit.docc/WindowKit.md) and
-  [WindowKitAppKit.docc](Sources/WindowKitAppKit/WindowKitAppKit.docc/WindowKitAppKit.md)
 
 ## Why WindowKit?
 
@@ -86,6 +78,11 @@ Accessibility integration:
 .product(name: "WindowKit", package: "window-kit"),
 .product(name: "WindowKitAppKit", package: "window-kit"),
 ```
+
+## Documentation
+
+- [WindowKit API reference](https://swiftpackageindex.com/naviapps/window-kit/documentation/windowkit)
+- [WindowKitAppKit API reference](https://swiftpackageindex.com/naviapps/window-kit/documentation/windowkitappkit)
 
 ## Basic Usage
 
