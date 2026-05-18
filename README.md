@@ -30,6 +30,15 @@ The package is split into two libraries:
 - Point-based hit-testing for cursor-based window discovery.
 - Reusable placement and screen-movement primitives for deterministic window geometry.
 
+## Use Cases
+
+WindowKit can serve as the window systems layer beneath:
+
+- tiling window managers and keyboard-driven layout tools
+- cursor-based window pickers and snap tools
+- launcher extensions that need focused-window or point-based window actions
+- automation utilities that need testable geometry and Accessibility-backed control
+
 ## Architecture
 
 ```text
