@@ -6,5 +6,9 @@ Released versions follow semantic versioning.
 
 ## [Unreleased]
 
-- Preparing the initial public release.
-- Pre-release internal API cleanup is intentionally not itemized.
+No changes yet.
+
+## [1.0.0] - 2026-05-19
+
+- Initial stable public release.
+- Includes window discovery, querying, hit-testing, placement, screen movement, and live AppKit/Accessibility integrations.
