@@ -1,9 +1,18 @@
 import CoreGraphics
+import WindowKit
 import XCTest
 
-@testable import WindowKit
-
 final class WindowScreenMovementTests: XCTestCase {
+  func testMovePreservingRelativePositionCentersWhenSourceHasNoMovementRange() {
+    let result = WindowScreenMovement.preservingRelativePosition(
+      windowFrame: CGRect(x: 0, y: 0, width: 100, height: 100),
+      from: CGRect(x: 0, y: 0, width: 100, height: 100),
+      to: CGRect(x: 200, y: 300, width: 300, height: 500)
+    )
+
+    XCTAssertEqual(result, CGRect(x: 300, y: 500, width: 100, height: 100))
+  }
+
   func testMoveCenterPreservingSizeKeepsFittingSizeCentered() {
     let windowFrame = CGRect(x: 0, y: 0, width: 120, height: 80)
     let visibleFrame = CGRect(x: 100, y: 200, width: 300, height: 200)
@@ -35,6 +44,29 @@ final class WindowScreenMovementTests: XCTestCase {
       in: visibleFrame
     )
     XCTAssertEqual(moved, CGRect(x: 100, y: 100, width: 300, height: 200))
+  }
+
+  func testMoveCenterPreservingSizeClampsNonFiniteSize() {
+    let moved = WindowScreenMovement.centerPreservingSize(
+      windowFrame: CGRect(x: 0, y: 0, width: CGFloat.infinity, height: CGFloat.nan),
+      in: CGRect(x: 100, y: 200, width: 300, height: 200)
+    )
+
+    XCTAssertEqual(moved, CGRect(x: 250, y: 300, width: 0, height: 0))
+  }
+
+  func testMoveCenterPreservingSizeSanitizesNonFiniteVisibleFrame() {
+    let moved = WindowScreenMovement.centerPreservingSize(
+      windowFrame: CGRect(x: 0, y: 0, width: 120, height: 80),
+      in: CGRect(
+        x: CGFloat.infinity,
+        y: CGFloat.nan,
+        width: CGFloat.infinity,
+        height: -CGFloat.infinity
+      )
+    )
+
+    XCTAssertEqual(moved, .zero)
   }
 
   func testMovePreservingRelativePositionKeepsRelativeOrigin() {
@@ -85,6 +117,21 @@ final class WindowScreenMovementTests: XCTestCase {
       from: CGRect(x: 0, y: 0, width: 200, height: 200),
       to: CGRect(x: 300, y: 0, width: 100, height: 100)
     )
-    XCTAssertEqual(moved, CGRect(x: 320, y: 0, width: 80, height: 60))
+    XCTAssertEqual(moved, CGRect(x: 300, y: 0, width: 80, height: 60))
+  }
+
+  func testMovePreservingRelativePositionSanitizesNonFiniteVisibleFrames() {
+    let moved = WindowScreenMovement.preservingRelativePosition(
+      windowFrame: CGRect(x: 10, y: 20, width: 80, height: 60),
+      from: CGRect(x: CGFloat.infinity, y: 0, width: 200, height: 200),
+      to: CGRect(
+        x: CGFloat.infinity,
+        y: CGFloat.nan,
+        width: CGFloat.infinity,
+        height: -CGFloat.infinity
+      )
+    )
+
+    XCTAssertEqual(moved, .zero)
   }
 }

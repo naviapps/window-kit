@@ -16,20 +16,23 @@ struct RunningApplicationCheckerStub: RunningApplicationChecking {
   }
 }
 
-struct CGWindowListInfoProviderStub: CGWindowListInfoProviding, @unchecked Sendable {
-  let entries: [CGWindowListInfoEntry]?
+struct WindowListProviderStub: WindowListProviding {
+  let entries: [WindowListEntry]?
 
-  init(entries: [CGWindowListInfoEntry]?) {
+  init(entries: [WindowListEntry]?) {
     self.entries = entries
   }
 
-  init(ownerProcessIdentifier: pid_t) {
-    entries = [[kCGWindowOwnerPID as String: NSNumber(value: ownerProcessIdentifier)]]
+  init(ownerProcessIdentifier: pid_t, windowIdentifier: CGWindowID = 42) {
+    entries = [
+      WindowListEntry(
+        ownerProcessIdentifier: ownerProcessIdentifier,
+        windowIdentifier: windowIdentifier
+      )
+    ]
   }
 
-  func windowListInfo(options _: CGWindowListOption, relativeToWindow _: CGWindowID)
-    -> [CGWindowListInfoEntry]?
-  {
+  func windowList(for _: WindowListRequest) -> [WindowListEntry]? {
     entries
   }
 }
@@ -49,7 +52,7 @@ struct FocusedWindowAXFixture {
     windowElement = AXUIElementCreateApplication(windowProcessIdentifier ?? processIdentifier + 1)
   }
 
-  func installCopyAttributeValue(
+  func accessibilityClient(
     additionalHandler:
       @escaping (
         AXUIElement,
@@ -58,29 +61,41 @@ struct FocusedWindowAXFixture {
       ) -> AXError = { _, _, value in
         value.pointee = nil
         return .noValue
-      }
-  ) {
-    let focusedAppAttribute = kAXFocusedApplicationAttribute as String
-    let focusedWindowAttribute = kAXFocusedWindowAttribute as String
+      },
+    setAttributeValue: @escaping (AXUIElement, CFString, CFTypeRef) -> AXError = { _, _, _ in
+      .success
+    },
+    valueCreate: @escaping (AXValueType, UnsafeRawPointer) -> AXValue? = AXValueCreate,
+    performAction: @escaping (AXUIElement, CFString) -> AXError = { _, _ in .success }
+  ) -> AXClient {
+    let focusedAppAttribute = AXWindowAttribute.focusedApplication.accessibilityName
+    let focusedWindowAttribute = AXWindowAttribute.focusedWindow.accessibilityName
 
-    AXAPI.copyAttributeValue = { element, attribute, value in
-      switch attribute as String {
-      case focusedAppAttribute where CFEqual(element, systemWideElement):
-        value.pointee = appElement
-        return .success
-      case focusedWindowAttribute where CFEqual(element, appElement):
-        value.pointee = windowElement
-        return .success
-      default:
-        return additionalHandler(element, attribute, value)
-      }
-    }
+    return .testing(
+      copyAttributeValue: { element, attribute, value in
+        switch attribute as String {
+        case focusedAppAttribute where CFEqual(element, systemWideElement):
+          value.pointee = appElement
+          return .success
+        case focusedWindowAttribute where CFEqual(element, appElement):
+          value.pointee = windowElement
+          return .success
+        default:
+          return additionalHandler(element, attribute, value)
+        }
+      },
+      setAttributeValue: setAttributeValue,
+      valueCreate: valueCreate,
+      performAction: performAction
+    )
   }
 
   func commandController(
+    accessibilityClient: AXClient? = nil,
     isRunningApplication: Bool = false
-  ) -> AXWindowCommandController {
-    AXWindowCommandController(
+  ) -> AXWindowController {
+    AXWindowController(
+      accessibilityClient: accessibilityClient ?? self.accessibilityClient(),
       systemWideElement: systemWideElement,
       applicationChecker: RunningApplicationCheckerStub(
         isRunning: isRunningApplication)
@@ -88,9 +103,11 @@ struct FocusedWindowAXFixture {
   }
 
   func frameController(
+    accessibilityClient: AXClient? = nil,
     isRunningApplication: Bool = false
-  ) -> AXWindowFrameController {
-    AXWindowFrameController(
+  ) -> AXWindowController {
+    AXWindowController(
+      accessibilityClient: accessibilityClient ?? self.accessibilityClient(),
       systemWideElement: systemWideElement,
       applicationChecker: RunningApplicationCheckerStub(
         isRunning: isRunningApplication)
@@ -98,9 +115,11 @@ struct FocusedWindowAXFixture {
   }
 
   func stateProvider(
+    accessibilityClient: AXClient? = nil,
     isRunningApplication: Bool = false
-  ) -> AXWindowStateProvider {
-    AXWindowStateProvider(
+  ) -> AXWindowController {
+    AXWindowController(
+      accessibilityClient: accessibilityClient ?? self.accessibilityClient(),
       systemWideElement: systemWideElement,
       applicationChecker: RunningApplicationCheckerStub(
         isRunning: isRunningApplication)
@@ -108,9 +127,11 @@ struct FocusedWindowAXFixture {
   }
 
   func roleProvider(
+    accessibilityClient: AXClient? = nil,
     isRunningApplication: Bool = false
-  ) -> AXWindowRoleProvider {
-    AXWindowRoleProvider(
+  ) -> AXWindowController {
+    AXWindowController(
+      accessibilityClient: accessibilityClient ?? self.accessibilityClient(),
       systemWideElement: systemWideElement,
       applicationChecker: RunningApplicationCheckerStub(
         isRunning: isRunningApplication)

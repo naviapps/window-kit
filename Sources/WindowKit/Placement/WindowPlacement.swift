@@ -4,42 +4,6 @@ import CoreGraphics
 public enum WindowPlacement: Equatable, Hashable, Sendable, Codable {
   /// Fill the selected screen area.
   case fill
-  /// Left half of the selected screen area.
-  case leftHalf
-  /// Right half of the selected screen area.
-  case rightHalf
-  /// Top half of the selected screen area.
-  case topHalf
-  /// Bottom half of the selected screen area.
-  case bottomHalf
-  /// Top-left quarter of the selected screen area.
-  case topLeftQuarter
-  /// Top-right quarter of the selected screen area.
-  case topRightQuarter
-  /// Bottom-left quarter of the selected screen area.
-  case bottomLeftQuarter
-  /// Bottom-right quarter of the selected screen area.
-  case bottomRightQuarter
-  /// Left third of the selected screen area.
-  case leftThird
-  /// Center third of the selected screen area.
-  case centerThird
-  /// Right third of the selected screen area.
-  case rightThird
-  /// Top third of the selected screen area.
-  case topThird
-  /// Middle third of the selected screen area.
-  case middleThird
-  /// Bottom third of the selected screen area.
-  case bottomThird
-  /// Left two-thirds of the selected screen area.
-  case leftTwoThirds
-  /// Right two-thirds of the selected screen area.
-  case rightTwoThirds
-  /// Top two-thirds of the selected screen area.
-  case topTwoThirds
-  /// Bottom two-thirds of the selected screen area.
-  case bottomTwoThirds
   /// Rectangular region in a grid.
   ///
   /// Columns are zero-based from the left. Rows are zero-based from the bottom in the same

@@ -1,6 +1,6 @@
 import CoreGraphics
 
-/// Selects a screen from an ordered screen list.
+/// Selects a screen from a screen list.
 public enum WindowScreenTarget: Equatable, Hashable, Sendable, Codable {
   /// The main screen.
   case main
@@ -10,6 +10,6 @@ public enum WindowScreenTarget: Equatable, Hashable, Sendable, Codable {
   case point(CGPoint)
   /// The screen matching a Core Graphics display identifier.
   case displayIdentifier(CGDirectDisplayID)
-  /// A screen by deterministic ordered index.
+  /// A screen by `WindowScreenSelector`'s deterministic ordered index.
   case orderedIndex(Int)
 }

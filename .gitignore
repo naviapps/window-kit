@@ -1,23 +1,15 @@
-# macOS
-.DS_Store
-
-# SwiftPM
 .build/
 .swiftpm/
-Package.resolved
-
-# Local tool state
-
-# Xcode
-xcuserdata/
-DerivedData/
-*.xcodeproj
-*.xcworkspace
-*.xcresult
-*.xcuserstate
-
-# Local secrets and logs
+.DS_Store
+.envrc
 .env
 .env.*
 !.env.example
+Package.resolved
+*.doccarchive
+DerivedData/
+xcuserdata/
+*.xcodeproj
+*.xcworkspace
+*.xcresult
 *.log

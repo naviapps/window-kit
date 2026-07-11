@@ -1,9 +1,38 @@
 import CoreGraphics
+import WindowKit
 import XCTest
 
-@testable import WindowKit
-
 final class WindowScreenSelectorTests: XCTestCase {
+  func testOrderedScreensPreservesInputOrderWhenSortKeysAreEqual() {
+    let first = WindowScreen(
+      frame: CGRect(x: 0, y: 0, width: 100, height: 100),
+      visibleFrame: CGRect(x: 0, y: 10, width: 100, height: 90),
+      isMain: true
+    )
+    let second = WindowScreen(
+      frame: CGRect(x: 0, y: 0, width: 100, height: 100),
+      visibleFrame: CGRect(x: 0, y: 20, width: 100, height: 80)
+    )
+
+    XCTAssertEqual(WindowScreenSelector.orderedScreens(from: [second, first]), [second, first])
+  }
+
+  func testOrderedScreensPreservesInputOrderForDuplicateDisplayIdentifiers() {
+    let first = WindowScreen(
+      displayIdentifier: 7,
+      frame: CGRect(x: 0, y: 0, width: 100, height: 100),
+      visibleFrame: CGRect(x: 0, y: 10, width: 100, height: 90),
+      isMain: true
+    )
+    let second = WindowScreen(
+      displayIdentifier: 7,
+      frame: CGRect(x: 0, y: 0, width: 100, height: 100),
+      visibleFrame: CGRect(x: 0, y: 20, width: 100, height: 80)
+    )
+
+    XCTAssertEqual(WindowScreenSelector.orderedScreens(from: [second, first]), [second, first])
+  }
+
   func testOrderedScreensSortsByMinXThenMinY() {
     let screens = [
       makeScreen(CGRect(x: 100, y: 10, width: 100, height: 100)),
@@ -83,7 +112,7 @@ final class WindowScreenSelectorTests: XCTestCase {
         for: .main,
         windowFrame: primary.frame,
         in: screens,
-        fallsBackToFirstScreen: false
+        fallback: .none
       )
     )
     XCTAssertNil(
@@ -91,7 +120,7 @@ final class WindowScreenSelectorTests: XCTestCase {
         for: .containingWindow,
         windowFrame: CGRect(x: 500, y: 500, width: 100, height: 100),
         in: screens,
-        fallsBackToFirstScreen: false
+        fallback: .none
       )
     )
     XCTAssertNil(
@@ -99,7 +128,7 @@ final class WindowScreenSelectorTests: XCTestCase {
         for: .point(CGPoint(x: 500, y: 500)),
         windowFrame: primary.frame,
         in: screens,
-        fallsBackToFirstScreen: false
+        fallback: .none
       )
     )
     XCTAssertNil(
@@ -107,7 +136,7 @@ final class WindowScreenSelectorTests: XCTestCase {
         for: .displayIdentifier(9),
         windowFrame: primary.frame,
         in: screens,
-        fallsBackToFirstScreen: false
+        fallback: .none
       )
     )
     XCTAssertNil(
@@ -115,7 +144,7 @@ final class WindowScreenSelectorTests: XCTestCase {
         for: .orderedIndex(9),
         windowFrame: primary.frame,
         in: screens,
-        fallsBackToFirstScreen: false
+        fallback: .none
       )
     )
   }
@@ -165,6 +194,29 @@ final class WindowScreenSelectorTests: XCTestCase {
     )
   }
 
+  func testScreenSelectionOrdersUnorderedInputBeforeIndexAndFallbackSelection() {
+    let right = makeScreen(CGRect(x: 300, y: 0, width: 200, height: 200))
+    let left = makeScreen(CGRect(x: 0, y: 0, width: 200, height: 200))
+
+    XCTAssertEqual(
+      WindowScreenSelector.screen(
+        for: .orderedIndex(0),
+        windowFrame: right.frame,
+        in: [right, left],
+        fallback: .none
+      ),
+      left
+    )
+    XCTAssertEqual(
+      WindowScreenSelector.screen(
+        for: .displayIdentifier(99),
+        windowFrame: right.frame,
+        in: [right, left]
+      ),
+      left
+    )
+  }
+
   func testScreenReturnsNilForEmptyScreens() {
     XCTAssertNil(
       WindowScreenSelector.screen(
@@ -185,7 +237,17 @@ final class WindowScreenSelectorTests: XCTestCase {
     XCTAssertNil(WindowScreenSelector.index(containing: CGPoint(x: 500, y: 500), in: screens))
   }
 
-  func testOrderedScreensStandardizesFramesBeforeSorting() {
+  func testIndexContainingPointReturnsOrderedScreenIndex() {
+    let right = makeScreen(CGRect(x: 300, y: 0, width: 200, height: 200))
+    let left = makeScreen(CGRect(x: 0, y: 0, width: 200, height: 200))
+
+    XCTAssertEqual(
+      WindowScreenSelector.index(containing: CGPoint(x: 350, y: 10), in: [right, left]),
+      1
+    )
+  }
+
+  func testOrderedScreensUsesStandardizedScreenFrames() {
     let screens = [
       makeScreen(
         CGRect(x: 200, y: 0, width: -100, height: 100),
@@ -198,7 +260,7 @@ final class WindowScreenSelectorTests: XCTestCase {
       WindowScreenSelector.orderedScreens(from: screens).map(\.frame.origin),
       [
         CGPoint(x: 0, y: 0),
-        CGPoint(x: 200, y: 0),
+        CGPoint(x: 100, y: 0),
       ]
     )
   }
@@ -236,7 +298,7 @@ final class WindowScreenSelectorTests: XCTestCase {
         for: .containingWindow,
         windowFrame: CGRect(x: 40, y: 40, width: 20, height: 20),
         in: [screen],
-        fallsBackToFirstScreen: false
+        fallback: .none
       ),
       screen
     )
@@ -263,6 +325,25 @@ final class WindowScreenSelectorTests: XCTestCase {
     )
     XCTAssertNil(WindowScreenSelector.adjacentIndex(from: 0, direction: .next, screenCount: 0))
     XCTAssertNil(WindowScreenSelector.adjacentIndex(from: 0, direction: .next, screenCount: -1))
+  }
+
+  func testAdjacentIndexAvoidsOverflowAtIntegerLimits() {
+    XCTAssertEqual(
+      WindowScreenSelector.adjacentIndex(
+        from: Int.max - 1,
+        direction: .next,
+        screenCount: Int.max
+      ),
+      0
+    )
+    XCTAssertEqual(
+      WindowScreenSelector.adjacentIndex(
+        from: Int.min,
+        direction: .previous,
+        screenCount: Int.max
+      ),
+      Int.max - 2
+    )
   }
 
   private func makeScreen(

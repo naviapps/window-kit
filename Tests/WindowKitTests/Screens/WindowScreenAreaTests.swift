@@ -1,6 +1,5 @@
+import WindowKit
 import XCTest
-
-@testable import WindowKit
 
 final class WindowScreenAreaTests: XCTestCase {
   func testWindowScreenAreaValueConformance() throws {

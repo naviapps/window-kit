@@ -1,11 +1,3 @@
-/// Reason a window hit-test did not produce a matching window.
-public enum WindowHitTestMissReason: Equatable, Hashable, Sendable, Codable {
-  /// The system window list could not be read.
-  case listUnavailable
-  /// No matching window contained the tested point.
-  case noMatchingWindowAtPoint
-}
-
 /// Result of a point-based window hit-test.
 public enum WindowHitTestResult: Equatable, Hashable, Sendable, Codable {
   /// A matching window snapshot was found.

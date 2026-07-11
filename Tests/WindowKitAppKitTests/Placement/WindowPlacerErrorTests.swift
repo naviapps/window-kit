@@ -7,6 +7,10 @@ final class WindowPlacerErrorTests: XCTestCase {
     assertSendable(WindowPlacerError.screenNotFound(.displayIdentifier(1)))
   }
 
+  func testWindowPlacerErrorIsHashable() {
+    assertHashable(WindowPlacerError.screenNotFound(.displayIdentifier(1)))
+  }
+
   func testWindowPlacerErrorEquatableMatchesIdenticalValues() {
     XCTAssertEqual(
       WindowPlacerError.screenNotFound(.displayIdentifier(1)),
@@ -22,4 +26,6 @@ final class WindowPlacerErrorTests: XCTestCase {
   }
 
   private func assertSendable<Value: Sendable>(_: Value) {}
+
+  private func assertHashable<Value: Hashable>(_: Value) {}
 }

@@ -7,7 +7,7 @@ import XCTest
 @MainActor
 final class AXValueConversionTests: XCTestCase {
   func testCGPointConvertsToAXValue() throws {
-    let value = try CGPoint(x: 12, y: 34).axValue()
+    let value = try CGPoint(x: 12, y: 34).axValue(using: .testing())
 
     var point = CGPoint.zero
     XCTAssertTrue(AXValueGetValue(value, .cgPoint, &point))
@@ -15,7 +15,7 @@ final class AXValueConversionTests: XCTestCase {
   }
 
   func testCGSizeConvertsToAXValue() throws {
-    let value = try CGSize(width: 56, height: 78).axValue()
+    let value = try CGSize(width: 56, height: 78).axValue(using: .testing())
 
     var size = CGSize.zero
     XCTAssertTrue(AXValueGetValue(value, .cgSize, &size))
@@ -23,51 +23,76 @@ final class AXValueConversionTests: XCTestCase {
   }
 
   func testCGPointConversionPassesCGPointTypeAndValue() throws {
-    defer { AXAPI.reset() }
     var capturedType: AXValueType?
     var capturedPoint = CGPoint.zero
-    AXAPI.valueCreate = { type, pointer in
+    let accessibilityClient = AXClient.testing(valueCreate: { type, pointer in
       capturedType = type
       capturedPoint = pointer.load(as: CGPoint.self)
       return AXValueCreate(type, pointer)
-    }
+    })
 
-    _ = try CGPoint(x: 12, y: 34).axValue()
+    _ = try CGPoint(x: 12, y: 34).axValue(using: accessibilityClient)
 
     XCTAssertEqual(capturedType, .cgPoint)
     XCTAssertEqual(capturedPoint, CGPoint(x: 12, y: 34))
   }
 
+  func testCGPointConversionRejectsNonFiniteCoordinates() {
+    let points = [
+      CGPoint(x: CGFloat.nan, y: 0),
+      CGPoint(x: 0, y: CGFloat.infinity),
+      CGPoint(x: -CGFloat.infinity, y: 0),
+    ]
+
+    for point in points {
+      XCTAssertThrowsError(try point.axValue(using: AXClient.testing())) { error in
+        XCTAssertEqual(error as? AXWindowError, .invalidAXValue)
+      }
+    }
+  }
+
+  func testCGSizeConversionRejectsNonFiniteDimensions() {
+    let sizes = [
+      CGSize(width: CGFloat.nan, height: 1),
+      CGSize(width: 1, height: CGFloat.infinity),
+      CGSize(width: -CGFloat.infinity, height: 1),
+    ]
+
+    for size in sizes {
+      XCTAssertThrowsError(try size.axValue(using: AXClient.testing())) { error in
+        XCTAssertEqual(error as? AXWindowError, .invalidAXValue)
+      }
+    }
+  }
+
   func testCGSizeConversionPassesCGSizeTypeAndValue() throws {
-    defer { AXAPI.reset() }
     var capturedType: AXValueType?
     var capturedSize = CGSize.zero
-    AXAPI.valueCreate = { type, pointer in
+    let accessibilityClient = AXClient.testing(valueCreate: { type, pointer in
       capturedType = type
       capturedSize = pointer.load(as: CGSize.self)
       return AXValueCreate(type, pointer)
-    }
+    })
 
-    _ = try CGSize(width: 56, height: 78).axValue()
+    _ = try CGSize(width: 56, height: 78).axValue(using: accessibilityClient)
 
     XCTAssertEqual(capturedType, .cgSize)
     XCTAssertEqual(capturedSize, CGSize(width: 56, height: 78))
   }
 
   func testCGPointConversionThrowsWhenAXValueCreationFails() {
-    defer { AXAPI.reset() }
-    AXAPI.valueCreate = { _, _ in nil }
+    let accessibilityClient = AXClient.testing(valueCreate: { _, _ in nil })
 
-    XCTAssertThrowsError(try CGPoint(x: 12, y: 34).axValue()) { error in
+    XCTAssertThrowsError(try CGPoint(x: 12, y: 34).axValue(using: accessibilityClient)) { error in
       XCTAssertEqual(error as? AXWindowError, .invalidAXValue)
     }
   }
 
   func testCGSizeConversionThrowsWhenAXValueCreationFails() {
-    defer { AXAPI.reset() }
-    AXAPI.valueCreate = { _, _ in nil }
+    let accessibilityClient = AXClient.testing(valueCreate: { _, _ in nil })
 
-    XCTAssertThrowsError(try CGSize(width: 56, height: 78).axValue()) { error in
+    XCTAssertThrowsError(try CGSize(width: 56, height: 78).axValue(using: accessibilityClient)) {
+      error in
       XCTAssertEqual(error as? AXWindowError, .invalidAXValue)
     }
   }

@@ -1,81 +1,61 @@
 import CoreGraphics
 import WindowKit
 
-/// Errors thrown by live window placement operations.
-public enum WindowPlacerError: Error, Equatable, Sendable {
-  /// The requested screen target could not be resolved.
-  case screenNotFound(WindowScreenTarget)
-}
-
 /// Places live macOS windows using WindowKit placement values and screen providers.
 @MainActor
 public struct WindowPlacer {
   private let frameController: any WindowFrameControlling
   private let screenProvider: any WindowScreenProviding
-  private let placementCalculator: WindowPlacementCalculator
 
   /// Creates a placer backed by Accessibility window frame control and AppKit screens.
   public init() {
     self.init(
-      frameController: AXWindowFrameController(),
-      screenProvider: NSScreenProvider(),
-      placementCalculator: .init()
-    )
-  }
-
-  init(
-    applicationChecker: any RunningApplicationChecking =
-      NSRunningApplicationChecker(),
-    placementCalculator: WindowPlacementCalculator = .init()
-  ) {
-    self.init(
-      frameController: AXWindowFrameController(
-        systemWideElement: AXAPI.createSystemWideElement(),
-        applicationChecker: applicationChecker
-      ),
-      screenProvider: NSScreenProvider(),
-      placementCalculator: placementCalculator
+      frameController: AXWindowController(),
+      screenProvider: NSScreenProvider()
     )
   }
 
   /// Creates a placer with caller-supplied frame and screen providers.
   public init(
     frameController: any WindowFrameControlling,
-    screenProvider: any WindowScreenProviding,
-    placementCalculator: WindowPlacementCalculator = .init()
+    screenProvider: any WindowScreenProviding
   ) {
     self.frameController = frameController
     self.screenProvider = screenProvider
-    self.placementCalculator = placementCalculator
   }
 
   /// Places a target window according to a placement value.
+  ///
+  /// Unresolved screen targets use the first ordered screen by default. Missing screens always
+  /// throw ``WindowPlacerError/screenNotFound(_:)``. Pass
+  /// ``WindowKit/WindowScreenFallback/none`` to also reject an unmatched target when screens exist.
   public func place(
     _ placement: WindowPlacement,
     for target: WindowTarget,
     screen screenTarget: WindowScreenTarget = .containingWindow,
     area: WindowScreenArea = .visible,
     inset: CGFloat = 0,
-    allowsScreenFallback: Bool = true
+    screenFallback: WindowScreenFallback = .firstScreen
   ) throws {
-    let windowFrame = try frameController.frame(for: target)
-    let screens = WindowScreenSelector.orderedScreens(from: screenProvider.screens())
+    let screens = screenProvider.screens()
+    guard !screens.isEmpty else { throw WindowPlacerError.screenNotFound(screenTarget) }
 
+    let windowFrame =
+      screenTarget == .containingWindow
+      ? try frameController.frame(for: target)
+      : .zero
     guard
       let selectedScreen = WindowScreenSelector.screen(
         for: screenTarget,
         windowFrame: windowFrame,
         in: screens,
-        fallsBackToFirstScreen: allowsScreenFallback
+        fallback: screenFallback
       )
     else {
-      if !allowsScreenFallback {
-        throw WindowPlacerError.screenNotFound(screenTarget)
-      }
-      return
+      throw WindowPlacerError.screenNotFound(screenTarget)
     }
 
-    let frame = placementCalculator.frame(
+    let frame = WindowPlacementCalculator.frame(
       for: placement,
       in: selectedScreen.frame(for: area),
       inset: inset
@@ -84,24 +64,25 @@ public struct WindowPlacer {
   }
 
   /// Moves a target window to the next or previous ordered screen.
+  ///
+  /// A window outside all known screens is treated as if it were on the first ordered screen by
+  /// default. Missing screens always throw ``WindowPlacerError/screenNotFound(_:)``. Pass
+  /// ``WindowKit/WindowScreenFallback/none`` to also reject a window outside every known screen.
   public func moveToAdjacentScreen(
     _ direction: WindowScreenCycleDirection,
     for target: WindowTarget,
     preservingRelativePosition: Bool = true,
-    allowsScreenFallback: Bool = true
+    screenFallback: WindowScreenFallback = .firstScreen
   ) throws {
-    let window = try frameController.frame(for: target)
     let screens = WindowScreenSelector.orderedScreens(from: screenProvider.screens())
-    guard !screens.isEmpty else {
-      try handleMissingContainingWindow(allowsScreenFallback: allowsScreenFallback)
-      return
-    }
+    guard !screens.isEmpty else { throw WindowPlacerError.screenNotFound(.containingWindow) }
 
+    let window = try frameController.frame(for: target)
     let currentScreenIndex: Int
     if let index = WindowScreenSelector.index(containing: window.center, in: screens) {
       currentScreenIndex = index
     } else {
-      try handleMissingContainingWindow(allowsScreenFallback: allowsScreenFallback)
+      try handleMissingContainingWindow(screenFallback: screenFallback)
       currentScreenIndex = 0
     }
     guard
@@ -111,7 +92,7 @@ public struct WindowPlacer {
         screenCount: screens.count
       )
     else {
-      try handleMissingContainingWindow(allowsScreenFallback: allowsScreenFallback)
+      try handleMissingContainingWindow(screenFallback: screenFallback)
       return
     }
 
@@ -130,8 +111,8 @@ public struct WindowPlacer {
     try frameController.setFrame(nextFrame, for: target)
   }
 
-  private func handleMissingContainingWindow(allowsScreenFallback: Bool) throws {
-    if !allowsScreenFallback {
+  private func handleMissingContainingWindow(screenFallback: WindowScreenFallback) throws {
+    if screenFallback == .none {
       throw WindowPlacerError.screenNotFound(.containingWindow)
     }
   }

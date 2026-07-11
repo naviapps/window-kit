@@ -4,9 +4,9 @@ import CoreGraphics
 public struct WindowScreen: Equatable, Hashable, Sendable, Codable {
   /// Core Graphics display identifier, when available.
   public let displayIdentifier: CGDirectDisplayID?
-  /// Full screen frame.
+  /// Standardized full screen frame.
   public let frame: CGRect
-  /// Visible frame excluding system-reserved areas such as the menu bar and Dock.
+  /// Standardized visible frame excluding system-reserved areas such as the menu bar and Dock.
   public let visibleFrame: CGRect
   /// Whether this screen is the main screen.
   public let isMain: Bool
@@ -19,8 +19,8 @@ public struct WindowScreen: Equatable, Hashable, Sendable, Codable {
     isMain: Bool = false
   ) {
     self.displayIdentifier = displayIdentifier
-    self.frame = frame
-    self.visibleFrame = visibleFrame
+    self.frame = frame.finiteStandardized
+    self.visibleFrame = visibleFrame.finiteStandardized
     self.isMain = isMain
   }
 
@@ -33,11 +33,4 @@ public struct WindowScreen: Equatable, Hashable, Sendable, Codable {
       return visibleFrame
     }
   }
-}
-
-/// Provides app-facing screen values.
-public protocol WindowScreenProviding: Sendable {
-  /// Returns the current screens.
-  @MainActor
-  func screens() -> [WindowScreen]
 }

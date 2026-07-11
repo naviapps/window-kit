@@ -4,18 +4,34 @@ import WindowKit
 
 @MainActor
 struct AXWindowElementResolver {
+  private let accessibilityClient: AXClient
   private let systemWideElement: AXUIElement
   private let applicationChecker: any RunningApplicationChecking
-  private let windowListInfoProvider: any CGWindowListInfoProviding
+  private let windowListProvider: any WindowListProviding
 
   init(
+    accessibilityClient: AXClient,
+    applicationChecker: any RunningApplicationChecking = NSRunningApplicationChecker(),
+    windowListProvider: any WindowListProviding = SystemWindowListProvider()
+  ) {
+    self.init(
+      accessibilityClient: accessibilityClient,
+      systemWideElement: accessibilityClient.createSystemWideElement(),
+      applicationChecker: applicationChecker,
+      windowListProvider: windowListProvider
+    )
+  }
+
+  init(
+    accessibilityClient: AXClient = .live,
     systemWideElement: AXUIElement,
     applicationChecker: any RunningApplicationChecking,
-    windowListInfoProvider: any CGWindowListInfoProviding = SystemCGWindowListInfoProvider()
+    windowListProvider: any WindowListProviding = SystemWindowListProvider()
   ) {
+    self.accessibilityClient = accessibilityClient
     self.systemWideElement = systemWideElement
     self.applicationChecker = applicationChecker
-    self.windowListInfoProvider = windowListInfoProvider
+    self.windowListProvider = windowListProvider
   }
 
   func windowElement(for target: WindowTarget) throws -> AXUIElement {
@@ -31,13 +47,17 @@ struct AXWindowElementResolver {
     try requireAccessibilityTrust()
 
     guard
-      let focusedApplication = try systemWideElement.attributeElement(
-        kAXFocusedApplicationAttribute)
+      let focusedApplication = try accessibilityClient.attributeElement(
+        .focusedApplication,
+        of: systemWideElement)
     else {
       throw AXWindowError.applicationNotFound(.focused)
     }
 
-    guard let focusedWindow = try focusedApplication.attributeElement(kAXFocusedWindowAttribute)
+    guard
+      let focusedWindow = try accessibilityClient.attributeElement(
+        .focusedWindow,
+        of: focusedApplication)
     else {
       throw AXWindowError.windowNotFound(.focused)
     }
@@ -52,30 +72,31 @@ struct AXWindowElementResolver {
     let target = WindowTarget.windowIdentifier(windowIdentifier)
 
     guard
-      let windowListInfo = windowListInfoProvider.windowListInfo(
-        options: [.optionIncludingWindow, .excludeDesktopElements],
-        relativeToWindow: windowIdentifier
-      ),
-      let ownerProcessIdentifierValue = windowListInfo.first?[kCGWindowOwnerPID as String]
-        as? NSNumber
+      let windowListEntry = windowListProvider.windowList(
+        for: .window(windowIdentifier)
+      )?.first(where: { $0.windowIdentifier == windowIdentifier }),
+      let ownerProcessIdentifier = windowListEntry.ownerProcessIdentifier
     else {
       throw AXWindowError.windowNotFound(target)
     }
 
-    let ownerProcessIdentifier = pid_t(ownerProcessIdentifierValue.int32Value)
     guard
       applicationChecker.isRunningApplication(processIdentifier: ownerProcessIdentifier)
     else {
       throw AXWindowError.applicationNotFound(target)
     }
 
-    let appElement = AXAPI.createApplicationElement(ownerProcessIdentifier)
-    guard let windows = try appElement.attributeElements(kAXWindowsAttribute) else {
+    let appElement = accessibilityClient.createApplicationElement(ownerProcessIdentifier)
+    guard
+      let windows = try accessibilityClient.attributeElements(.windows, of: appElement)
+    else {
       throw AXWindowError.windowNotFound(target)
     }
 
     for window in windows {
-      if let axId = try window.attributeUInt32(AXWindowAttributeName.windowIdentifier),
+      if let axId = try accessibilityClient.attributeUInt32(
+        .windowIdentifier,
+        of: window),
         axId == windowIdentifier
       {
         return window
@@ -86,7 +107,7 @@ struct AXWindowElementResolver {
   }
 
   private func requireAccessibilityTrust() throws {
-    guard AXAPI.isProcessTrusted() else {
+    guard accessibilityClient.isProcessTrusted() else {
       throw AXWindowError.accessibilityNotTrusted
     }
   }
