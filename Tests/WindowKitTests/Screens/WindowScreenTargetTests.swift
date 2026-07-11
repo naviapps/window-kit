@@ -1,7 +1,6 @@
 import CoreGraphics
+import WindowKit
 import XCTest
-
-@testable import WindowKit
 
 final class WindowScreenTargetTests: XCTestCase {
   func testWindowScreenTargetValueConformance() throws {

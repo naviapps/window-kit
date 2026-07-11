@@ -6,15 +6,8 @@ public struct WindowState: Equatable, Hashable, Sendable, Codable {
   public let isFullScreen: Bool?
 
   /// Creates a window state value.
-  public init(isMinimized: Bool?, isFullScreen: Bool?) {
+  public init(isMinimized: Bool? = nil, isFullScreen: Bool? = nil) {
     self.isMinimized = isMinimized
     self.isFullScreen = isFullScreen
   }
-}
-
-/// Reads state for a target window.
-public protocol WindowStateProviding: Sendable {
-  /// Returns the current state for a target window.
-  @MainActor
-  func state(for target: WindowTarget) throws -> WindowState
 }

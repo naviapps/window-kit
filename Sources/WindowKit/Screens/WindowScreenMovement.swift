@@ -4,8 +4,8 @@ import CoreGraphics
 public enum WindowScreenMovement {
   /// Centers a window in a target visible frame while preserving as much size as fits.
   ///
-  /// Input rectangles are standardized before calculation. The returned frame is clamped to the
-  /// target visible frame when the source window is larger than the target.
+  /// Input rectangles are made finite and standardized before calculation. The returned frame is
+  /// clamped to the target visible frame when the source window is larger than the target.
   ///
   /// - Parameters:
   ///   - windowFrame: Current window frame.
@@ -14,8 +14,8 @@ public enum WindowScreenMovement {
   public static func centerPreservingSize(windowFrame: CGRect, in visibleFrame: CGRect)
     -> CGRect
   {
-    let window = normalized(windowFrame)
-    let target = normalized(visibleFrame)
+    let window = windowFrame.finiteStandardized
+    let target = visibleFrame.finiteStandardized
     let width = clamped(window.width, lowerBound: 0, upperBound: target.width)
     let height = clamped(window.height, lowerBound: 0, upperBound: target.height)
     return CGRect(
@@ -28,8 +28,8 @@ public enum WindowScreenMovement {
 
   /// Moves a window between visible frames while preserving relative position.
   ///
-  /// Input rectangles are standardized before calculation. The returned frame is clamped to the
-  /// target visible frame when the source window is larger than the target.
+  /// Input rectangles are made finite and standardized before calculation. The returned frame is
+  /// clamped to the target visible frame when the source window is larger than the target.
   ///
   /// - Parameters:
   ///   - windowFrame: Current window frame.
@@ -41,17 +41,20 @@ public enum WindowScreenMovement {
     from sourceVisibleFrame: CGRect,
     to targetVisibleFrame: CGRect
   ) -> CGRect {
-    let window = normalized(windowFrame)
-    let source = normalized(sourceVisibleFrame)
-    let target = normalized(targetVisibleFrame)
+    let window = windowFrame.finiteStandardized
+    let source = sourceVisibleFrame.finiteStandardized
+    let target = targetVisibleFrame.finiteStandardized
     let width = clamped(window.width, lowerBound: 0, upperBound: target.width)
     let height = clamped(window.height, lowerBound: 0, upperBound: target.height)
 
-    let sourceAvailableWidth = max(1, source.width - window.width)
-    let sourceAvailableHeight = max(1, source.height - window.height)
-
-    let xProgress = clamped((window.minX - source.minX) / sourceAvailableWidth)
-    let yProgress = clamped((window.minY - source.minY) / sourceAvailableHeight)
+    let xProgress = relativeProgress(
+      offset: window.minX - source.minX,
+      availableLength: source.width - window.width
+    )
+    let yProgress = relativeProgress(
+      offset: window.minY - source.minY,
+      availableLength: source.height - window.height
+    )
 
     let targetAvailableWidth = max(0, target.width - width)
     let targetAvailableHeight = max(0, target.height - height)
@@ -64,26 +67,9 @@ public enum WindowScreenMovement {
     )
   }
 
-  private static func normalized(_ rect: CGRect) -> CGRect {
-    if rect.origin.x.isFinite, rect.origin.y.isFinite, rect.width.isFinite, rect.height.isFinite {
-      return rect.standardized
-    }
-
-    let width = finiteMagnitude(rect.width)
-    let height = finiteMagnitude(rect.height)
-    return CGRect(
-      x: rect.width < 0 ? rect.origin.x + rect.width : rect.origin.x,
-      y: rect.height < 0 ? rect.origin.y + rect.height : rect.origin.y,
-      width: width,
-      height: height
-    )
-  }
-
-  private static func finiteMagnitude(_ value: CGFloat) -> CGFloat {
-    guard value.isFinite else {
-      return value > 0 ? .greatestFiniteMagnitude : 0
-    }
-    return abs(value)
+  private static func relativeProgress(offset: CGFloat, availableLength: CGFloat) -> CGFloat {
+    guard availableLength > 0 else { return 0.5 }
+    return clamped(offset / availableLength)
   }
 
   private static func clamped(

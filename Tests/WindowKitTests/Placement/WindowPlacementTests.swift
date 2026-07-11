@@ -1,30 +1,11 @@
 import CoreGraphics
+import WindowKit
 import XCTest
-
-@testable import WindowKit
 
 final class WindowPlacementTests: XCTestCase {
   func testWindowPlacementValueConformance() throws {
     let placements: [WindowPlacement] = [
       .fill,
-      .leftHalf,
-      .rightHalf,
-      .topHalf,
-      .bottomHalf,
-      .topLeftQuarter,
-      .topRightQuarter,
-      .bottomLeftQuarter,
-      .bottomRightQuarter,
-      .leftThird,
-      .centerThird,
-      .rightThird,
-      .topThird,
-      .middleThird,
-      .bottomThird,
-      .leftTwoThirds,
-      .rightTwoThirds,
-      .topTwoThirds,
-      .bottomTwoThirds,
       .grid(columns: 3, rows: 2, column: 1, row: 0, columnSpan: 2, rowSpan: 1),
       .centered(widthRatio: 0.5, heightRatio: 0.5),
     ]

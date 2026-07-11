@@ -1,6 +1,5 @@
+import WindowKit
 import XCTest
-
-@testable import WindowKit
 
 final class WindowHitTestResultTests: XCTestCase {
   func testHitResultExposesSnapshot() {
@@ -21,16 +20,16 @@ final class WindowHitTestResultTests: XCTestCase {
   }
 
   func testHitTestResultAndMissReasonValueConformance() throws {
-    try assertValueConformance(WindowHitTestMissReason.listUnavailable)
+    try assertValueConformance(WindowHitTestMissReason.sourceUnavailable)
     try assertValueConformance(WindowHitTestMissReason.noMatchingWindowAtPoint)
-    try assertValueConformance(WindowHitTestResult.miss(.listUnavailable))
+    try assertValueConformance(WindowHitTestResult.miss(.sourceUnavailable))
     try assertValueConformance(
       WindowHitTestResult.hit(makeSnapshot())
     )
   }
 
   func testHitTestResultAndMissReasonAreSendable() {
-    assertSendable(WindowHitTestMissReason.listUnavailable)
+    assertSendable(WindowHitTestMissReason.sourceUnavailable)
     assertSendable(WindowHitTestResult.miss(.noMatchingWindowAtPoint))
     assertSendable(
       WindowHitTestResult.hit(makeSnapshot())
@@ -42,7 +41,6 @@ final class WindowHitTestResultTests: XCTestCase {
       ownerProcessIdentifier: 123,
       windowIdentifier: windowIdentifier,
       frame: .zero,
-      layer: 0
     )
   }
 

@@ -1,6 +1,6 @@
 import CoreGraphics
 
-/// Immutable app-facing representation of a macOS window list entry.
+/// Immutable app-facing representation of a macOS window.
 public struct WindowSnapshot: Equatable, Hashable, Sendable, Codable {
   /// Process identifier of the owning application.
   public let ownerProcessIdentifier: pid_t
@@ -12,13 +12,10 @@ public struct WindowSnapshot: Equatable, Hashable, Sendable, Codable {
   public let ownerBundleIdentifier: String?
   /// Window title, when available.
   public let title: String?
-  /// Window frame in global screen coordinates.
+  /// Standardized window frame in global screen coordinates.
+  ///
+  /// Non-finite components are replaced with finite zero-origin bounds.
   public let frame: CGRect
-  /// Core Graphics window layer.
-  public let layer: Int
-  /// Whether the window is minimized, when the system window list includes that value.
-  public let isMinimized: Bool?
-
   /// Creates an immutable window snapshot.
   public init(
     ownerProcessIdentifier: pid_t,
@@ -26,17 +23,13 @@ public struct WindowSnapshot: Equatable, Hashable, Sendable, Codable {
     ownerName: String? = nil,
     ownerBundleIdentifier: String? = nil,
     title: String? = nil,
-    frame: CGRect,
-    layer: Int,
-    isMinimized: Bool? = nil
+    frame: CGRect
   ) {
     self.ownerProcessIdentifier = ownerProcessIdentifier
     self.windowIdentifier = windowIdentifier
     self.ownerName = ownerName
     self.ownerBundleIdentifier = ownerBundleIdentifier
     self.title = title
-    self.frame = frame
-    self.layer = layer
-    self.isMinimized = isMinimized
+    self.frame = frame.finiteStandardized
   }
 }

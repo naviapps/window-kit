@@ -1,22 +1,20 @@
 import ApplicationServices
+import os
 import XCTest
 
-@testable import WindowKit
+import WindowKit
 @testable import WindowKitAppKit
 
 @MainActor
 final class AXWindowElementResolverTests: XCTestCase {
   func testFocusedTargetReturnsFocusedWindow() throws {
-    defer { AXAPI.reset() }
-    AXAPI.isProcessTrusted = { true }
-
     let systemElement = AXUIElementCreateSystemWide()
     let appElement = AXUIElementCreateApplication(getpid())
     let windowElement = AXUIElementCreateApplication(getpid())
 
-    let focusedApplicationAttribute = kAXFocusedApplicationAttribute as String
-    let focusedWindowAttribute = kAXFocusedWindowAttribute as String
-    AXAPI.copyAttributeValue = { element, attribute, value in
+    let focusedApplicationAttribute = AXWindowAttribute.focusedApplication.accessibilityName
+    let focusedWindowAttribute = AXWindowAttribute.focusedWindow.accessibilityName
+    let accessibilityClient = AXClient.testing(copyAttributeValue: { element, attribute, value in
       switch attribute as String {
       case focusedApplicationAttribute:
         XCTAssertEqual(CFEqual(element, systemElement), true)
@@ -30,9 +28,10 @@ final class AXWindowElementResolverTests: XCTestCase {
         value.pointee = nil
         return .noValue
       }
-    }
+    })
 
     let resolver = AXWindowElementResolver(
+      accessibilityClient: accessibilityClient,
       systemWideElement: systemElement,
       applicationChecker: RunningApplicationCheckerStub(isRunning: false)
     )
@@ -42,10 +41,8 @@ final class AXWindowElementResolverTests: XCTestCase {
   }
 
   func testFocusedTargetThrowsWhenAccessibilityNotTrusted() {
-    defer { AXAPI.reset() }
-    AXAPI.isProcessTrusted = { false }
-
     let resolver = AXWindowElementResolver(
+      accessibilityClient: .testing(isProcessTrusted: { false }),
       systemWideElement: AXUIElementCreateSystemWide(),
       applicationChecker: RunningApplicationCheckerStub(isRunning: false)
     )
@@ -56,14 +53,13 @@ final class AXWindowElementResolverTests: XCTestCase {
   }
 
   func testFocusedTargetThrowsWhenFocusedApplicationMissing() {
-    defer { AXAPI.reset() }
-    AXAPI.isProcessTrusted = { true }
-    AXAPI.copyAttributeValue = { _, _, value in
+    let accessibilityClient = AXClient.testing(copyAttributeValue: { _, _, value in
       value.pointee = nil
       return .noValue
-    }
+    })
 
     let resolver = AXWindowElementResolver(
+      accessibilityClient: accessibilityClient,
       systemWideElement: AXUIElementCreateSystemWide(),
       applicationChecker: RunningApplicationCheckerStub(isRunning: false)
     )
@@ -74,16 +70,14 @@ final class AXWindowElementResolverTests: XCTestCase {
   }
 
   func testFocusedTargetThrowsInvalidAXValueWhenFocusedApplicationHasUnexpectedType() {
-    defer { AXAPI.reset() }
-    AXAPI.isProcessTrusted = { true }
-
-    AXAPI.copyAttributeValue = { _, attribute, value in
-      XCTAssertEqual(attribute as String, kAXFocusedApplicationAttribute as String)
+    let accessibilityClient = AXClient.testing(copyAttributeValue: { _, attribute, value in
+      XCTAssertEqual(attribute as String, AXWindowAttribute.focusedApplication.accessibilityName)
       value.pointee = "invalid" as CFString
       return .success
-    }
+    })
 
     let resolver = AXWindowElementResolver(
+      accessibilityClient: accessibilityClient,
       systemWideElement: AXUIElementCreateSystemWide(),
       applicationChecker: RunningApplicationCheckerStub(isRunning: false)
     )
@@ -94,16 +88,14 @@ final class AXWindowElementResolverTests: XCTestCase {
   }
 
   func testFocusedTargetThrowsUnderlyingAccessibilityErrorWhenFocusedApplicationReadFails() {
-    defer { AXAPI.reset() }
-    AXAPI.isProcessTrusted = { true }
-
-    AXAPI.copyAttributeValue = { _, attribute, value in
-      XCTAssertEqual(attribute as String, kAXFocusedApplicationAttribute as String)
+    let accessibilityClient = AXClient.testing(copyAttributeValue: { _, attribute, value in
+      XCTAssertEqual(attribute as String, AXWindowAttribute.focusedApplication.accessibilityName)
       value.pointee = nil
       return .cannotComplete
-    }
+    })
 
     let resolver = AXWindowElementResolver(
+      accessibilityClient: accessibilityClient,
       systemWideElement: AXUIElementCreateSystemWide(),
       applicationChecker: RunningApplicationCheckerStub(isRunning: false)
     )
@@ -114,13 +106,10 @@ final class AXWindowElementResolverTests: XCTestCase {
   }
 
   func testFocusedTargetThrowsWhenFocusedWindowMissing() {
-    defer { AXAPI.reset() }
-    AXAPI.isProcessTrusted = { true }
-
     let appElement = AXUIElementCreateApplication(getpid())
-    let focusedApplicationAttribute = kAXFocusedApplicationAttribute as String
-    let focusedWindowAttribute = kAXFocusedWindowAttribute as String
-    AXAPI.copyAttributeValue = { _, attribute, value in
+    let focusedApplicationAttribute = AXWindowAttribute.focusedApplication.accessibilityName
+    let focusedWindowAttribute = AXWindowAttribute.focusedWindow.accessibilityName
+    let accessibilityClient = AXClient.testing(copyAttributeValue: { _, attribute, value in
       switch attribute as String {
       case focusedApplicationAttribute:
         value.pointee = appElement
@@ -132,9 +121,10 @@ final class AXWindowElementResolverTests: XCTestCase {
         value.pointee = nil
         return .noValue
       }
-    }
+    })
 
     let resolver = AXWindowElementResolver(
+      accessibilityClient: accessibilityClient,
       systemWideElement: AXUIElementCreateSystemWide(),
       applicationChecker: RunningApplicationCheckerStub(isRunning: false)
     )
@@ -145,10 +135,8 @@ final class AXWindowElementResolverTests: XCTestCase {
   }
 
   func testWindowIdentifierTargetThrowsWhenAccessibilityNotTrusted() {
-    defer { AXAPI.reset() }
-    AXAPI.isProcessTrusted = { false }
-
     let resolver = AXWindowElementResolver(
+      accessibilityClient: .testing(isProcessTrusted: { false }),
       systemWideElement: AXUIElementCreateSystemWide(),
       applicationChecker: RunningApplicationCheckerStub(isRunning: false)
     )
@@ -159,14 +147,12 @@ final class AXWindowElementResolverTests: XCTestCase {
   }
 
   func testWindowIdentifierTargetThrowsWhenRunningApplicationMissing() {
-    defer { AXAPI.reset() }
-    AXAPI.isProcessTrusted = { true }
-
     let applicationChecker = RecordingRunningApplicationChecker(isRunning: false)
     let resolver = AXWindowElementResolver(
+      accessibilityClient: .testing(),
       systemWideElement: AXUIElementCreateSystemWide(),
       applicationChecker: applicationChecker,
-      windowListInfoProvider: CGWindowListInfoProviderStub(ownerProcessIdentifier: 1234)
+      windowListProvider: WindowListProviderStub(ownerProcessIdentifier: 1234)
     )
 
     XCTAssertThrowsError(try resolver.windowElement(for: .windowIdentifier(42))) { error in
@@ -175,14 +161,12 @@ final class AXWindowElementResolverTests: XCTestCase {
     XCTAssertEqual(applicationChecker.requests, [1234])
   }
 
-  func testWindowIdentifierTargetThrowsWhenWindowListInfoIsMissing() {
-    defer { AXAPI.reset() }
-    AXAPI.isProcessTrusted = { true }
-
+  func testWindowIdentifierTargetThrowsWhenWindowListIsMissing() {
     let resolver = AXWindowElementResolver(
+      accessibilityClient: .testing(),
       systemWideElement: AXUIElementCreateSystemWide(),
       applicationChecker: RunningApplicationCheckerStub(isRunning: false),
-      windowListInfoProvider: CGWindowListInfoProviderStub(entries: nil)
+      windowListProvider: WindowListProviderStub(entries: nil)
     )
 
     XCTAssertThrowsError(try resolver.windowElement(for: .windowIdentifier(42))) { error in
@@ -191,13 +175,11 @@ final class AXWindowElementResolverTests: XCTestCase {
   }
 
   func testWindowIdentifierTargetThrowsWhenOwnerProcessIdentifierIsMissing() {
-    defer { AXAPI.reset() }
-    AXAPI.isProcessTrusted = { true }
-
     let resolver = AXWindowElementResolver(
+      accessibilityClient: .testing(),
       systemWideElement: AXUIElementCreateSystemWide(),
       applicationChecker: RunningApplicationCheckerStub(isRunning: false),
-      windowListInfoProvider: CGWindowListInfoProviderStub(entries: [[:]])
+      windowListProvider: WindowListProviderStub(entries: [WindowListEntry()])
     )
 
     XCTAssertThrowsError(try resolver.windowElement(for: .windowIdentifier(42))) { error in
@@ -206,16 +188,13 @@ final class AXWindowElementResolverTests: XCTestCase {
   }
 
   func testWindowIdentifierTargetReturnsMatchingAccessibilityWindow() throws {
-    defer { AXAPI.reset() }
-    AXAPI.isProcessTrusted = { true }
-
     let matchedWindow = AXUIElementCreateApplication(getpid())
-    AXAPI.copyAttributeValue = { element, attribute, value in
+    let accessibilityClient = AXClient.testing(copyAttributeValue: { element, attribute, value in
       switch attribute as String {
-      case kAXWindowsAttribute:
+      case AXWindowAttribute.windows.accessibilityName:
         value.pointee = [matchedWindow] as CFArray
         return .success
-      case AXWindowAttributeName.windowIdentifier:
+      case AXWindowAttribute.windowIdentifier.accessibilityName:
         XCTAssertEqual(CFEqual(element, matchedWindow), true)
         value.pointee = NSNumber(value: UInt32(42))
         return .success
@@ -223,87 +202,127 @@ final class AXWindowElementResolverTests: XCTestCase {
         value.pointee = nil
         return .noValue
       }
-    }
+    })
 
     let resolver = AXWindowElementResolver(
+      accessibilityClient: accessibilityClient,
       systemWideElement: AXUIElementCreateSystemWide(),
       applicationChecker: RunningApplicationCheckerStub(),
-      windowListInfoProvider: CGWindowListInfoProviderStub(ownerProcessIdentifier: 1234)
+      windowListProvider: WindowListProviderStub(ownerProcessIdentifier: 1234)
     )
 
     let resolved = try resolver.windowElement(for: .windowIdentifier(42))
     XCTAssertEqual(CFEqual(resolved, matchedWindow), true)
   }
 
-  func testWindowIdentifierTargetRequestsSingleWindowListInfo() throws {
-    defer { AXAPI.reset() }
-    AXAPI.isProcessTrusted = { true }
-
-    let windowListInfoProvider = RecordingCGWindowListInfoProvider(
-      entries: [[kCGWindowOwnerPID as String: NSNumber(value: pid_t(1234))]]
+  func testWindowIdentifierTargetRequestsSingleWindowList() throws {
+    let windowListProvider = RecordingWindowListProvider(
+      entries: [WindowListEntry(ownerProcessIdentifier: 1234, windowIdentifier: 42)]
     )
     let matchedWindow = AXUIElementCreateApplication(getpid())
-    AXAPI.copyAttributeValue = { _, attribute, value in
+    let accessibilityClient = AXClient.testing(copyAttributeValue: { _, attribute, value in
       switch attribute as String {
-      case kAXWindowsAttribute:
+      case AXWindowAttribute.windows.accessibilityName:
         value.pointee = [matchedWindow] as CFArray
         return .success
-      case AXWindowAttributeName.windowIdentifier:
+      case AXWindowAttribute.windowIdentifier.accessibilityName:
         value.pointee = NSNumber(value: UInt32(42))
         return .success
       default:
         value.pointee = nil
         return .noValue
       }
-    }
+    })
 
     let resolver = AXWindowElementResolver(
+      accessibilityClient: accessibilityClient,
       systemWideElement: AXUIElementCreateSystemWide(),
       applicationChecker: RunningApplicationCheckerStub(),
-      windowListInfoProvider: windowListInfoProvider
+      windowListProvider: windowListProvider
     )
 
     _ = try resolver.windowElement(for: .windowIdentifier(42))
 
-    XCTAssertEqual(windowListInfoProvider.requests.count, 1)
-    XCTAssertEqual(windowListInfoProvider.requests.first?.relativeToWindow, 42)
+    XCTAssertEqual(windowListProvider.requests.count, 1)
+    XCTAssertEqual(windowListProvider.requests.first?.windowIdentifier, 42)
     XCTAssertEqual(
-      windowListInfoProvider.requests.first?.options,
+      windowListProvider.requests.first?.options,
       [.optionIncludingWindow, .excludeDesktopElements]
     )
   }
 
   func testWindowIdentifierTargetCreatesApplicationElementForOwnerProcessIdentifier() throws {
-    defer { AXAPI.reset() }
-    AXAPI.isProcessTrusted = { true }
-
     let appElement = AXUIElementCreateApplication(1234)
     let matchedWindow = AXUIElementCreateApplication(getpid())
     var createdApplicationProcessIdentifier: pid_t?
-    AXAPI.createApplicationElement = { processIdentifier in
-      createdApplicationProcessIdentifier = processIdentifier
-      return appElement
-    }
-    AXAPI.copyAttributeValue = { element, attribute, value in
-      switch attribute as String {
-      case kAXWindowsAttribute:
-        XCTAssertEqual(CFEqual(element, appElement), true)
-        value.pointee = [matchedWindow] as CFArray
-        return .success
-      case AXWindowAttributeName.windowIdentifier:
-        XCTAssertEqual(CFEqual(element, matchedWindow), true)
-        value.pointee = NSNumber(value: UInt32(42))
-        return .success
-      default:
-        value.pointee = nil
-        return .noValue
+    let accessibilityClient = AXClient.testing(
+      createApplicationElement: { processIdentifier in
+        createdApplicationProcessIdentifier = processIdentifier
+        return appElement
+      },
+      copyAttributeValue: { element, attribute, value in
+        switch attribute as String {
+        case AXWindowAttribute.windows.accessibilityName:
+          XCTAssertEqual(CFEqual(element, appElement), true)
+          value.pointee = [matchedWindow] as CFArray
+          return .success
+        case AXWindowAttribute.windowIdentifier.accessibilityName:
+          XCTAssertEqual(CFEqual(element, matchedWindow), true)
+          value.pointee = NSNumber(value: UInt32(42))
+          return .success
+        default:
+          value.pointee = nil
+          return .noValue
+        }
       }
-    }
+    )
 
     let resolver = AXWindowElementResolver(
+      accessibilityClient: accessibilityClient,
       systemWideElement: AXUIElementCreateSystemWide(),
       applicationChecker: RunningApplicationCheckerStub(),
-      windowListInfoProvider: CGWindowListInfoProviderStub(ownerProcessIdentifier: 1234)
+      windowListProvider: WindowListProviderStub(ownerProcessIdentifier: 1234)
+    )
+
+    _ = try resolver.windowElement(for: .windowIdentifier(42))
+
+    XCTAssertEqual(createdApplicationProcessIdentifier, 1234)
+  }
+
+  func testWindowIdentifierTargetUsesOwnerProcessIdentifierFromMatchingWindowListEntry() throws {
+    let appElement = AXUIElementCreateApplication(1234)
+    let matchedWindow = AXUIElementCreateApplication(getpid())
+    var createdApplicationProcessIdentifier: pid_t?
+    let accessibilityClient = AXClient.testing(
+      createApplicationElement: { processIdentifier in
+        createdApplicationProcessIdentifier = processIdentifier
+        return appElement
+      },
+      copyAttributeValue: { element, attribute, value in
+        switch attribute as String {
+        case AXWindowAttribute.windows.accessibilityName:
+          XCTAssertEqual(CFEqual(element, appElement), true)
+          value.pointee = [matchedWindow] as CFArray
+          return .success
+        case AXWindowAttribute.windowIdentifier.accessibilityName:
+          XCTAssertEqual(CFEqual(element, matchedWindow), true)
+          value.pointee = NSNumber(value: UInt32(42))
+          return .success
+        default:
+          value.pointee = nil
+          return .noValue
+        }
+      }
+    )
+
+    let resolver = AXWindowElementResolver(
+      accessibilityClient: accessibilityClient,
+      systemWideElement: AXUIElementCreateSystemWide(),
+      applicationChecker: RunningApplicationCheckerStub(),
+      windowListProvider: WindowListProviderStub(entries: [
+        WindowListEntry(ownerProcessIdentifier: 9999, windowIdentifier: 7),
+        WindowListEntry(ownerProcessIdentifier: 1234, windowIdentifier: 42),
+      ])
     )
 
     _ = try resolver.windowElement(for: .windowIdentifier(42))
@@ -312,18 +331,17 @@ final class AXWindowElementResolverTests: XCTestCase {
   }
 
   func testWindowIdentifierTargetThrowsWhenApplicationWindowsAreMissing() {
-    defer { AXAPI.reset() }
-    AXAPI.isProcessTrusted = { true }
-    AXAPI.copyAttributeValue = { _, attribute, value in
-      XCTAssertEqual(attribute as String, kAXWindowsAttribute as String)
+    let accessibilityClient = AXClient.testing(copyAttributeValue: { _, attribute, value in
+      XCTAssertEqual(attribute as String, AXWindowAttribute.windows.accessibilityName)
       value.pointee = nil
       return .noValue
-    }
+    })
 
     let resolver = AXWindowElementResolver(
+      accessibilityClient: accessibilityClient,
       systemWideElement: AXUIElementCreateSystemWide(),
       applicationChecker: RunningApplicationCheckerStub(),
-      windowListInfoProvider: CGWindowListInfoProviderStub(ownerProcessIdentifier: 1234)
+      windowListProvider: WindowListProviderStub(ownerProcessIdentifier: 1234)
     )
 
     XCTAssertThrowsError(try resolver.windowElement(for: .windowIdentifier(42))) { error in
@@ -332,18 +350,17 @@ final class AXWindowElementResolverTests: XCTestCase {
   }
 
   func testWindowIdentifierTargetThrowsInvalidAXValueWhenApplicationWindowsHaveUnexpectedType() {
-    defer { AXAPI.reset() }
-    AXAPI.isProcessTrusted = { true }
-    AXAPI.copyAttributeValue = { _, attribute, value in
-      XCTAssertEqual(attribute as String, kAXWindowsAttribute as String)
+    let accessibilityClient = AXClient.testing(copyAttributeValue: { _, attribute, value in
+      XCTAssertEqual(attribute as String, AXWindowAttribute.windows.accessibilityName)
       value.pointee = "invalid" as CFString
       return .success
-    }
+    })
 
     let resolver = AXWindowElementResolver(
+      accessibilityClient: accessibilityClient,
       systemWideElement: AXUIElementCreateSystemWide(),
       applicationChecker: RunningApplicationCheckerStub(),
-      windowListInfoProvider: CGWindowListInfoProviderStub(ownerProcessIdentifier: 1234)
+      windowListProvider: WindowListProviderStub(ownerProcessIdentifier: 1234)
     )
 
     XCTAssertThrowsError(try resolver.windowElement(for: .windowIdentifier(42))) { error in
@@ -352,27 +369,25 @@ final class AXWindowElementResolverTests: XCTestCase {
   }
 
   func testWindowIdentifierTargetThrowsWhenNoAccessibilityWindowMatches() {
-    defer { AXAPI.reset() }
-    AXAPI.isProcessTrusted = { true }
-
-    AXAPI.copyAttributeValue = { _, attribute, value in
+    let accessibilityClient = AXClient.testing(copyAttributeValue: { _, attribute, value in
       switch attribute as String {
-      case kAXWindowsAttribute:
+      case AXWindowAttribute.windows.accessibilityName:
         value.pointee = [AXUIElementCreateApplication(getpid())] as CFArray
         return .success
-      case AXWindowAttributeName.windowIdentifier:
+      case AXWindowAttribute.windowIdentifier.accessibilityName:
         value.pointee = NSNumber(value: UInt32(7))
         return .success
       default:
         value.pointee = nil
         return .noValue
       }
-    }
+    })
 
     let resolver = AXWindowElementResolver(
+      accessibilityClient: accessibilityClient,
       systemWideElement: AXUIElementCreateSystemWide(),
       applicationChecker: RunningApplicationCheckerStub(),
-      windowListInfoProvider: CGWindowListInfoProviderStub(ownerProcessIdentifier: 1234)
+      windowListProvider: WindowListProviderStub(ownerProcessIdentifier: 1234)
     )
 
     XCTAssertThrowsError(try resolver.windowElement(for: .windowIdentifier(42))) { error in
@@ -381,27 +396,25 @@ final class AXWindowElementResolverTests: XCTestCase {
   }
 
   func testWindowIdentifierTargetThrowsInvalidAXValueWhenWindowIdentifierHasUnexpectedType() {
-    defer { AXAPI.reset() }
-    AXAPI.isProcessTrusted = { true }
-
-    AXAPI.copyAttributeValue = { _, attribute, value in
+    let accessibilityClient = AXClient.testing(copyAttributeValue: { _, attribute, value in
       switch attribute as String {
-      case kAXWindowsAttribute:
+      case AXWindowAttribute.windows.accessibilityName:
         value.pointee = [AXUIElementCreateApplication(getpid())] as CFArray
         return .success
-      case AXWindowAttributeName.windowIdentifier:
+      case AXWindowAttribute.windowIdentifier.accessibilityName:
         value.pointee = "invalid" as CFString
         return .success
       default:
         value.pointee = nil
         return .noValue
       }
-    }
+    })
 
     let resolver = AXWindowElementResolver(
+      accessibilityClient: accessibilityClient,
       systemWideElement: AXUIElementCreateSystemWide(),
       applicationChecker: RunningApplicationCheckerStub(),
-      windowListInfoProvider: CGWindowListInfoProviderStub(ownerProcessIdentifier: 1234)
+      windowListProvider: WindowListProviderStub(ownerProcessIdentifier: 1234)
     )
 
     XCTAssertThrowsError(try resolver.windowElement(for: .windowIdentifier(42))) { error in
@@ -411,35 +424,45 @@ final class AXWindowElementResolverTests: XCTestCase {
 }
 
 private final class RecordingRunningApplicationChecker:
-  RunningApplicationChecking, @unchecked Sendable
+  RunningApplicationChecking
 {
-  private(set) var requests: [pid_t] = []
+  private let requestsStorage = OSAllocatedUnfairLock(initialState: [pid_t]())
   let isRunning: Bool
+
+  var requests: [pid_t] {
+    requestsStorage.withLock { $0 }
+  }
 
   init(isRunning: Bool) {
     self.isRunning = isRunning
   }
 
   func isRunningApplication(processIdentifier: pid_t) -> Bool {
-    requests.append(processIdentifier)
+    requestsStorage.withLock {
+      $0.append(processIdentifier)
+    }
     return isRunning
   }
 }
 
-private final class RecordingCGWindowListInfoProvider:
-  CGWindowListInfoProviding, @unchecked Sendable
+private final class RecordingWindowListProvider:
+  WindowListProviding
 {
-  private(set) var requests: [(options: CGWindowListOption, relativeToWindow: CGWindowID)] = []
-  let entries: [CGWindowListInfoEntry]?
+  private let requestsStorage = OSAllocatedUnfairLock(initialState: [WindowListRequest]())
+  let entries: [WindowListEntry]?
 
-  init(entries: [CGWindowListInfoEntry]?) {
+  var requests: [WindowListRequest] {
+    requestsStorage.withLock { $0 }
+  }
+
+  init(entries: [WindowListEntry]?) {
     self.entries = entries
   }
 
-  func windowListInfo(options: CGWindowListOption, relativeToWindow: CGWindowID)
-    -> [CGWindowListInfoEntry]?
-  {
-    requests.append((options: options, relativeToWindow: relativeToWindow))
+  func windowList(for request: WindowListRequest) -> [WindowListEntry]? {
+    requestsStorage.withLock {
+      $0.append(request)
+    }
     return entries
   }
 }

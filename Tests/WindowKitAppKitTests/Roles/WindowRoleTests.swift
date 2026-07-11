@@ -10,13 +10,16 @@ final class WindowRoleTests: XCTestCase {
     try assertValueConformance(WindowRole.panel)
     try assertValueConformance(WindowRole.popover)
     try assertValueConformance(WindowRole.systemDialog)
-    try assertValueConformance(WindowRole.unknown(role: "AXWindow", subrole: "AXDialog"))
-    try assertValueConformance(WindowRole.unknown(role: nil, subrole: nil))
+    try assertValueConformance(
+      WindowRole.unclassified(accessibilityRole: "AXWindow", accessibilitySubrole: "AXDialog"))
+    try assertValueConformance(
+      WindowRole.unclassified(accessibilityRole: nil, accessibilitySubrole: nil))
   }
 
   func testWindowRoleIsSendable() {
     assertSendable(WindowRole.standard)
-    assertSendable(WindowRole.unknown(role: "AXWindow", subrole: "AXDialog"))
+    assertSendable(
+      WindowRole.unclassified(accessibilityRole: "AXWindow", accessibilitySubrole: "AXDialog"))
   }
 
   @MainActor

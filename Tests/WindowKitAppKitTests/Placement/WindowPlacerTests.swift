@@ -1,4 +1,5 @@
 import CoreGraphics
+import os
 import WindowKit
 import WindowKitAppKit
 import XCTest
@@ -22,7 +23,8 @@ final class WindowPlacerTests: XCTestCase {
       screenProvider: screens
     )
 
-    try controller.place(.rightHalf, for: target)
+    try controller.place(
+      .grid(columns: 2, rows: 1, column: 1, row: 0, columnSpan: 1, rowSpan: 1), for: target)
     XCTAssertEqual(
       try frameController.frame(for: target), CGRect(x: 400, y: 20, width: 400, height: 560))
   }
@@ -68,23 +70,56 @@ final class WindowPlacerTests: XCTestCase {
     ])
     let controller = WindowPlacer(frameController: frameController, screenProvider: screens)
 
-    try controller.place(.leftHalf, for: target, area: .full)
+    try controller.place(
+      .grid(columns: 2, rows: 1, column: 0, row: 0, columnSpan: 1, rowSpan: 1),
+      for: target,
+      area: .full
+    )
 
     XCTAssertEqual(
       try frameController.frame(for: target), CGRect(x: 0, y: 0, width: 400, height: 600))
   }
 
   @MainActor
-  func testPlaceReturnsWithoutMutationWhenNoScreensAreAvailable() throws {
-    let target = WindowTarget.windowIdentifier(4)
-    let original = CGRect(x: 900, y: 900, width: 100, height: 100)
-    let frameController = WindowFrameControllerFake(frames: [(target, original)])
-    let screens = WindowScreenProviderStub(screens: [])
-    let controller = WindowPlacer(frameController: frameController, screenProvider: screens)
+  func testPlaceThrowsBeforeReadingWindowFrameWhenNoScreensAreAvailable() throws {
+    let target = WindowTarget.windowIdentifier(42)
+    let frameController = WindowFrameControllerFake()
+    let controller = WindowPlacer(
+      frameController: frameController,
+      screenProvider: WindowScreenProviderStub(screens: [])
+    )
 
-    try controller.place(.fill, for: target)
+    XCTAssertThrowsError(
+      try controller.place(.fill, for: target)
+    ) { error in
+      XCTAssertEqual(error as? WindowPlacerError, .screenNotFound(.containingWindow))
+    }
+    XCTAssertEqual(frameController.frameReadCount, 0)
+  }
 
-    XCTAssertEqual(try frameController.frame(for: target), original)
+  @MainActor
+  func testPlaceDoesNotReadWindowFrameForExplicitScreenTargets() throws {
+    let target = WindowTarget.windowIdentifier(43)
+    let frameController = WindowFrameControllerFake(frames: [
+      (target, CGRect(x: 0, y: 0, width: 10, height: 10))
+    ])
+    let controller = WindowPlacer(
+      frameController: frameController,
+      screenProvider: WindowScreenProviderStub(screens: [
+        .init(
+          displayIdentifier: 1,
+          frame: CGRect(x: 0, y: 0, width: 800, height: 600),
+          visibleFrame: CGRect(x: 0, y: 0, width: 800, height: 600),
+          isMain: true
+        )
+      ])
+    )
+
+    try controller.place(.fill, for: target, screen: .displayIdentifier(1))
+
+    XCTAssertEqual(frameController.frameReadCount, 0)
+    XCTAssertEqual(
+      try frameController.frame(for: target), CGRect(x: 0, y: 0, width: 800, height: 600))
   }
 
   @MainActor
@@ -106,7 +141,7 @@ final class WindowPlacerTests: XCTestCase {
         .fill,
         for: target,
         screen: .displayIdentifier(99),
-        allowsScreenFallback: false
+        screenFallback: .none
       )
     ) { error in
       XCTAssertEqual(error as? WindowPlacerError, .screenNotFound(.displayIdentifier(99)))
@@ -152,7 +187,7 @@ final class WindowPlacerTests: XCTestCase {
     let controller = WindowPlacer(frameController: frameController, screenProvider: screens)
 
     XCTAssertThrowsError(
-      try controller.moveToAdjacentScreen(.next, for: target, allowsScreenFallback: false)
+      try controller.moveToAdjacentScreen(.next, for: target, screenFallback: .none)
     ) { error in
       XCTAssertEqual(error as? WindowPlacerError, .screenNotFound(.containingWindow))
     }
@@ -183,7 +218,7 @@ final class WindowPlacerTests: XCTestCase {
   }
 
   @MainActor
-  func testMoveToAdjacentScreenThrowsWhenNoScreensAreAvailableInStrictMode() throws {
+  func testMoveToAdjacentScreenThrowsWhenNoScreensAreAvailable() throws {
     let target = WindowTarget.windowIdentifier(8)
     let original = CGRect(x: 10, y: 10, width: 100, height: 100)
     let frameController = WindowFrameControllerFake(frames: [(target, original)])
@@ -193,7 +228,7 @@ final class WindowPlacerTests: XCTestCase {
     )
 
     XCTAssertThrowsError(
-      try controller.moveToAdjacentScreen(.next, for: target, allowsScreenFallback: false)
+      try controller.moveToAdjacentScreen(.next, for: target)
     ) { error in
       XCTAssertEqual(error as? WindowPlacerError, .screenNotFound(.containingWindow))
     }
@@ -201,32 +236,46 @@ final class WindowPlacerTests: XCTestCase {
   }
 
   @MainActor
-  func testMoveToAdjacentScreenReturnsWithoutMutationWhenNoScreensAreAvailable() throws {
-    let target = WindowTarget.windowIdentifier(9)
-    let original = CGRect(x: 10, y: 10, width: 100, height: 100)
-    let frameController = WindowFrameControllerFake(frames: [(target, original)])
+  func testMoveToAdjacentScreenThrowsBeforeReadingWindowFrameWhenNoScreensAreAvailable()
+    throws
+  {
+    let target = WindowTarget.windowIdentifier(81)
+    let frameController = WindowFrameControllerFake()
     let controller = WindowPlacer(
       frameController: frameController,
       screenProvider: WindowScreenProviderStub(screens: [])
     )
 
-    try controller.moveToAdjacentScreen(.next, for: target)
-
-    XCTAssertEqual(try frameController.frame(for: target), original)
+    XCTAssertThrowsError(
+      try controller.moveToAdjacentScreen(.next, for: target)
+    ) { error in
+      XCTAssertEqual(error as? WindowPlacerError, .screenNotFound(.containingWindow))
+    }
+    XCTAssertEqual(frameController.frameReadCount, 0)
   }
+
 }
 
 @MainActor
-private final class WindowFrameControllerFake: WindowFrameControlling, @unchecked Sendable {
-  private var frames: [(WindowTarget, CGRect)]
+private final class WindowFrameControllerFake: WindowFrameControlling {
+  private let framesStorage: OSAllocatedUnfairLock<[(WindowTarget, CGRect)]>
+  private let frameReadCountStorage = OSAllocatedUnfairLock(initialState: 0)
+
+  var frameReadCount: Int {
+    frameReadCountStorage.withLock { $0 }
+  }
 
   init(frames: [(WindowTarget, CGRect)] = []) {
-    self.frames = frames
+    framesStorage = OSAllocatedUnfairLock(initialState: frames)
   }
 
   @MainActor
   func frame(for target: WindowTarget) throws -> CGRect {
-    guard let frame = frames.first(where: { $0.0 == target })?.1 else {
+    frameReadCountStorage.withLock { $0 += 1 }
+    let frame = framesStorage.withLock { frames in
+      frames.first(where: { $0.0 == target })?.1
+    }
+    guard let frame else {
       throw WindowFrameControllerFakeError.missingFrame(target)
     }
     return frame
@@ -234,10 +283,16 @@ private final class WindowFrameControllerFake: WindowFrameControlling, @unchecke
 
   @MainActor
   func setFrame(_ frame: CGRect, for target: WindowTarget) throws {
-    guard let index = frames.firstIndex(where: { $0.0 == target }) else {
+    let didUpdate = framesStorage.withLock { frames in
+      guard let index = frames.firstIndex(where: { $0.0 == target }) else {
+        return false
+      }
+      frames[index].1 = frame
+      return true
+    }
+    guard didUpdate else {
       throw WindowFrameControllerFakeError.missingFrame(target)
     }
-    frames[index].1 = frame
   }
 }
 

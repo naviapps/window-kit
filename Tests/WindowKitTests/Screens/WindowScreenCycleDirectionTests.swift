@@ -1,6 +1,5 @@
+import WindowKit
 import XCTest
-
-@testable import WindowKit
 
 final class WindowScreenCycleDirectionTests: XCTestCase {
   func testWindowScreenCycleDirectionValueConformance() throws {

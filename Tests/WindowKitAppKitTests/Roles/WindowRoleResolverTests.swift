@@ -1,4 +1,3 @@
-import ApplicationServices
 import XCTest
 
 @testable import WindowKitAppKit
@@ -6,9 +5,15 @@ import XCTest
 final class WindowRoleResolverTests: XCTestCase {
   func testResolveClassifiesStandardWindow() {
     let resolver = WindowRoleResolver()
-    XCTAssertEqual(resolver.resolve(role: kAXWindowRole as String, subrole: nil), .standard)
     XCTAssertEqual(
-      resolver.resolve(role: kAXWindowRole as String, subrole: kAXStandardWindowSubrole as String),
+      resolver.resolve(
+        accessibilityRole: AXWindowRoleValue.window.accessibilityName,
+        accessibilitySubrole: nil),
+      .standard)
+    XCTAssertEqual(
+      resolver.resolve(
+        accessibilityRole: AXWindowRoleValue.window.accessibilityName,
+        accessibilitySubrole: AXWindowSubroleValue.standardWindow.accessibilityName),
       .standard
     )
   }
@@ -16,31 +21,45 @@ final class WindowRoleResolverTests: XCTestCase {
   func testResolveClassifiesDialogWindow() {
     let resolver = WindowRoleResolver()
     XCTAssertEqual(
-      resolver.resolve(role: kAXWindowRole as String, subrole: kAXDialogSubrole as String),
+      resolver.resolve(
+        accessibilityRole: AXWindowRoleValue.window.accessibilityName,
+        accessibilitySubrole: AXWindowSubroleValue.dialog.accessibilityName
+      ),
       .dialog
     )
   }
 
   func testResolveClassifiesSheetWindow() {
     let resolver = WindowRoleResolver()
-    XCTAssertEqual(resolver.resolve(role: kAXSheetRole as String, subrole: nil), .sheet)
     XCTAssertEqual(
-      resolver.resolve(role: kAXSheetRole as String, subrole: kAXDialogSubrole as String),
+      resolver.resolve(
+        accessibilityRole: AXWindowRoleValue.sheet.accessibilityName,
+        accessibilitySubrole: nil), .sheet
+    )
+    XCTAssertEqual(
+      resolver.resolve(
+        accessibilityRole: AXWindowRoleValue.sheet.accessibilityName,
+        accessibilitySubrole: AXWindowSubroleValue.dialog.accessibilityName),
       .sheet
     )
   }
 
   func testResolveClassifiesPanelWindow() {
     let resolver = WindowRoleResolver()
-    XCTAssertEqual(resolver.resolve(role: "AXPanel", subrole: nil), .panel)
     XCTAssertEqual(
-      resolver.resolve(role: kAXWindowRole as String, subrole: kAXFloatingWindowSubrole as String),
+      resolver.resolve(
+        accessibilityRole: AXWindowRoleValue.panel.accessibilityName,
+        accessibilitySubrole: nil), .panel)
+    XCTAssertEqual(
+      resolver.resolve(
+        accessibilityRole: AXWindowRoleValue.window.accessibilityName,
+        accessibilitySubrole: AXWindowSubroleValue.floatingWindow.accessibilityName),
       .panel
     )
     XCTAssertEqual(
       resolver.resolve(
-        role: kAXWindowRole as String,
-        subrole: kAXSystemFloatingWindowSubrole as String
+        accessibilityRole: AXWindowRoleValue.window.accessibilityName,
+        accessibilitySubrole: AXWindowSubroleValue.systemFloatingWindow.accessibilityName
       ),
       .panel
     )
@@ -48,9 +67,15 @@ final class WindowRoleResolverTests: XCTestCase {
 
   func testResolveClassifiesPopoverWindow() {
     let resolver = WindowRoleResolver()
-    XCTAssertEqual(resolver.resolve(role: kAXPopoverRole as String, subrole: nil), .popover)
     XCTAssertEqual(
-      resolver.resolve(role: kAXPopoverRole as String, subrole: kAXDialogSubrole as String),
+      resolver.resolve(
+        accessibilityRole: AXWindowRoleValue.popover.accessibilityName,
+        accessibilitySubrole: nil),
+      .popover)
+    XCTAssertEqual(
+      resolver.resolve(
+        accessibilityRole: AXWindowRoleValue.popover.accessibilityName,
+        accessibilitySubrole: AXWindowSubroleValue.dialog.accessibilityName),
       .popover
     )
   }
@@ -58,33 +83,69 @@ final class WindowRoleResolverTests: XCTestCase {
   func testResolveClassifiesSystemDialogWindow() {
     let resolver = WindowRoleResolver()
     XCTAssertEqual(
-      resolver.resolve(role: kAXWindowRole as String, subrole: kAXSystemDialogSubrole as String),
+      resolver.resolve(
+        accessibilityRole: AXWindowRoleValue.window.accessibilityName,
+        accessibilitySubrole: AXWindowSubroleValue.systemDialog.accessibilityName),
       .systemDialog
     )
   }
 
-  func testResolveClassifiesWindowBySubroleWhenRoleIsUnavailable() {
-    let resolver = WindowRoleResolver()
-    XCTAssertEqual(resolver.resolve(role: nil, subrole: kAXDialogSubrole as String), .dialog)
-  }
-
-  func testResolvePreservesUnknownRoleMetadata() {
+  func testResolvePreservesSubroleMetadataWhenRoleIsUnavailable() {
     let resolver = WindowRoleResolver()
     XCTAssertEqual(
-      resolver.resolve(role: "Custom", subrole: "Other"), .unknown(role: "Custom", subrole: "Other")
-    )
-    XCTAssertEqual(
-      resolver.resolve(role: kAXDialogSubrole as String, subrole: nil),
-      .unknown(role: kAXDialogSubrole as String, subrole: nil)
-    )
-    XCTAssertEqual(
-      resolver.resolve(role: kAXWindowRole as String, subrole: "AXUtilityWindow"),
-      .unknown(role: kAXWindowRole as String, subrole: "AXUtilityWindow")
+      resolver.resolve(
+        accessibilityRole: nil,
+        accessibilitySubrole: AXWindowSubroleValue.dialog.accessibilityName),
+      .unclassified(
+        accessibilityRole: nil,
+        accessibilitySubrole: AXWindowSubroleValue.dialog.accessibilityName
+      )
     )
   }
 
-  func testResolveReturnsUnknownWhenRoleAndSubroleAreMissing() {
+  func testResolvePreservesUnclassifiedRoleMetadata() {
     let resolver = WindowRoleResolver()
-    XCTAssertEqual(resolver.resolve(role: nil, subrole: nil), .unknown(role: nil, subrole: nil))
+    XCTAssertEqual(
+      resolver.resolve(accessibilityRole: "Custom", accessibilitySubrole: "Other"),
+      .unclassified(accessibilityRole: "Custom", accessibilitySubrole: "Other")
+    )
+    XCTAssertEqual(
+      resolver.resolve(
+        accessibilityRole: AXWindowSubroleValue.dialog.accessibilityName,
+        accessibilitySubrole: nil),
+      .unclassified(
+        accessibilityRole: AXWindowSubroleValue.dialog.accessibilityName,
+        accessibilitySubrole: nil)
+    )
+    XCTAssertEqual(
+      resolver.resolve(
+        accessibilityRole: AXWindowRoleValue.window.accessibilityName,
+        accessibilitySubrole: "AXUtilityWindow"),
+      .unclassified(
+        accessibilityRole: AXWindowRoleValue.window.accessibilityName,
+        accessibilitySubrole: "AXUtilityWindow")
+    )
+  }
+
+  func testResolvePreservesUnknownRoleEvenWhenSubroleIsKnown() {
+    let resolver = WindowRoleResolver()
+
+    XCTAssertEqual(
+      resolver.resolve(
+        accessibilityRole: "CustomRole",
+        accessibilitySubrole: AXWindowSubroleValue.dialog.accessibilityName
+      ),
+      .unclassified(
+        accessibilityRole: "CustomRole",
+        accessibilitySubrole: AXWindowSubroleValue.dialog.accessibilityName
+      )
+    )
+  }
+
+  func testResolveReturnsUnclassifiedRoleWhenRoleAndSubroleAreMissing() {
+    let resolver = WindowRoleResolver()
+    XCTAssertEqual(
+      resolver.resolve(accessibilityRole: nil, accessibilitySubrole: nil),
+      .unclassified(accessibilityRole: nil, accessibilitySubrole: nil))
   }
 }

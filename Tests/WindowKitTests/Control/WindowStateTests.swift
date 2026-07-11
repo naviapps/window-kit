@@ -1,6 +1,5 @@
+import WindowKit
 import XCTest
-
-@testable import WindowKit
 
 final class WindowStateTests: XCTestCase {
   func testInitStoresStateFields() {
@@ -8,6 +7,13 @@ final class WindowStateTests: XCTestCase {
 
     XCTAssertEqual(state.isMinimized, false)
     XCTAssertEqual(state.isFullScreen, true)
+  }
+
+  func testInitDefaultsToUnknownState() {
+    let state = WindowState()
+
+    XCTAssertNil(state.isMinimized)
+    XCTAssertNil(state.isFullScreen)
   }
 
   func testWindowStateValueConformance() throws {
