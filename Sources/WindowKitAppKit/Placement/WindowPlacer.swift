@@ -8,14 +8,20 @@ public struct WindowPlacer {
   private let screenProvider: any WindowScreenProviding
 
   /// Creates a placer backed by Accessibility window frame control and AppKit screens.
+  ///
+  /// Screen frames are converted to Accessibility coordinates: the primary display's top-left
+  /// corner is the origin, and y increases downward. Grid row zero is at the top of the area.
   public init() {
     self.init(
       frameController: AXWindowController(),
-      screenProvider: NSScreenProvider()
+      screenProvider: AccessibilityScreenProvider()
     )
   }
 
   /// Creates a placer with caller-supplied frame and screen providers.
+  ///
+  /// Both providers and any point screen target must use the same coordinate space. No conversion
+  /// is applied to caller-supplied providers.
   public init(
     frameController: any WindowFrameControlling,
     screenProvider: any WindowScreenProviding
@@ -28,7 +34,7 @@ public struct WindowPlacer {
   ///
   /// Unresolved screen targets use the first ordered screen by default. Missing screens always
   /// throw ``WindowPlacerError/screenNotFound(_:)``. Pass
-  /// ``WindowKit/WindowScreenFallback/none`` to also reject an unmatched target when screens exist.
+  /// `WindowScreenFallback.none` to also reject an unmatched target when screens exist.
   public func place(
     _ placement: WindowPlacement,
     for target: WindowTarget,
@@ -67,7 +73,7 @@ public struct WindowPlacer {
   ///
   /// A window outside all known screens is treated as if it were on the first ordered screen by
   /// default. Missing screens always throw ``WindowPlacerError/screenNotFound(_:)``. Pass
-  /// ``WindowKit/WindowScreenFallback/none`` to also reject a window outside every known screen.
+  /// `WindowScreenFallback.none` to also reject a window outside every known screen.
   public func moveToAdjacentScreen(
     _ direction: WindowScreenCycleDirection,
     for target: WindowTarget,

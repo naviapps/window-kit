@@ -33,6 +33,12 @@ let hitTester = WindowHitTester()
 let topmost = hitTester.topmost(at: .zero)
 ```
 
+The default `WindowPlacer()` converts AppKit screen geometry to Accessibility coordinates, whose
+origin is the primary display's top-left corner. Y increases downward, so grid row zero is the top
+row and displays above the primary display have negative y coordinates. `AXWindowController`
+and Core Graphics window snapshots use that space. `NSScreenProvider` retains AppKit's bottom-left
+origin; caller-supplied frame/screen providers and point targets must already agree on coordinates.
+
 ## Responsibility Boundary
 
 WindowKitAppKit owns AppKit-backed querying and hit-testing initializers,

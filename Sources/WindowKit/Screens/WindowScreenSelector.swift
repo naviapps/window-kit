@@ -2,7 +2,7 @@ import CoreGraphics
 
 /// Selects and orders screen values for placement and screen movement.
 public enum WindowScreenSelector {
-  /// Returns screens in deterministic left-to-right, then bottom-to-top order.
+  /// Returns screens in deterministic increasing-x, then increasing-y order.
   public static func orderedScreens(from screens: [WindowScreen]) -> [WindowScreen] {
     screens.enumerated().sorted { lhsEntry, rhsEntry in
       let lhs = lhsEntry.element

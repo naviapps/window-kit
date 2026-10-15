@@ -20,43 +20,6 @@ The package is split into two libraries:
 - `WindowKitAppKit`: live Core Graphics, AppKit, and Accessibility-backed facades for querying,
   hit-testing, and placement.
 
-## Why WindowKit?
-
-- Clean separation between reusable window value/geometry contracts and live Core Graphics,
-  AppKit, or Accessibility integrations.
-- Explicit host-app responsibility boundaries for permissions, shortcuts, persistence, UI, and
-  automation policy.
-- Protocol-based window abstractions for host apps that need deterministic geometry checks.
-- Point-based hit-testing for cursor-based window discovery.
-- Reusable placement and screen-movement primitives for deterministic window geometry.
-
-## Use Cases
-
-WindowKit can serve as the window systems layer beneath:
-
-- tiling window managers and keyboard-driven layout tools
-- cursor-based window pickers and snap tools
-- launcher extensions that need focused-window or point-based window actions
-- automation utilities that need deterministic geometry and Accessibility-backed control
-
-## Architecture
-
-```text
-Host App
-  |
-  v
-WindowKit
-  models, filters, hit-testing contracts, placement, control/provider protocols
-  |
-  | contracts
-  v
-WindowKitAppKit
-  Core Graphics queries, AppKit screens, running applications, AX controllers, role metadata
-  |
-  v
-macOS AppKit / Accessibility APIs
-```
-
 ## Requirements
 
 - macOS 14 or later
@@ -83,6 +46,11 @@ or Accessibility integration:
 
 - [WindowKit API reference](https://swiftpackageindex.com/naviapps/window-kit/documentation/windowkit)
 - [WindowKitAppKit API reference](https://swiftpackageindex.com/naviapps/window-kit/documentation/windowkitappkit)
+
+Local API catalogs for this checkout:
+
+- [WindowKit](Sources/WindowKit/WindowKit.docc/WindowKit.md)
+- [WindowKitAppKit](Sources/WindowKitAppKit/WindowKitAppKit.docc/WindowKitAppKit.md)
 
 ## Basic Usage
 
@@ -170,8 +138,9 @@ Those concerns should live in the host app or a package with that direct respons
 ## Placement and Screens
 
 `WindowPlacementCalculator` clamps insets to the available area. Grid placements clamp invalid
-columns, rows, and spans into the available grid. Grid columns start from the left, and rows start
-from the bottom in the selected screen-area coordinate space. Centered placements clamp width and
+columns, rows, and spans into the available grid. Grid columns and rows advance from the selected
+area's minimum x and y. Row zero is at the bottom in AppKit coordinates and at the top in
+Accessibility coordinates. Centered placements clamp width and
 height ratios to `0...1`.
 
 `WindowScreen` standardizes full and visible frames at construction.
@@ -190,6 +159,13 @@ matched, placement and screen moves fall back instead of throwing. An empty scre
 throws. Pass `screenFallback: .none` to
 `WindowPlacer.place` or `WindowPlacer.moveToAdjacentScreen` when a missing screen should throw
 `WindowPlacerError.screenNotFound`.
+
+The default `WindowPlacer()` converts AppKit screen frames to the top-left-origin Accessibility
+coordinate space used by `AXWindowController`. Grid row zero is therefore the top row, and a
+display above the primary display has negative y coordinates. Point screen targets use that same
+space. `NSScreenProvider` itself retains AppKit frames; when injecting custom providers into a
+placer, ensure window frames, screen frames, and points already share one coordinate space.
+Screen ordering follows increasing x, then increasing y in that space.
 
 ## Accessibility
 
@@ -222,20 +198,31 @@ adapters only at their live system boundary.
 The package does not request permissions, collect analytics, transmit data, or persist window data
 by itself.
 
-## Development
+## Repository guide
 
-Run the package check with:
+[Package.swift](Package.swift) defines products, target boundaries, platform requirements,
+and dependency resolution.
+
+| Target | Owns | Implementation and tests |
+| --- | --- | --- |
+| `WindowKit` | Snapshots, filters, geometry, screen selection and protocols | [Source](Sources/WindowKit) · [Tests](Tests/WindowKitTests) |
+| `WindowKitAppKit` | CG/AppKit/Accessibility queries and live window control | [Source](Sources/WindowKitAppKit) · [Tests](Tests/WindowKitAppKitTests) |
+
+## Development
 
 ```sh
 make check
 ```
 
-GitHub Actions runs the same check on pull requests and pushes to `main`.
+The gate runs strict Swift formatting, Debug and Release builds, and the test suite
+with complete concurrency checking and warnings as errors. CI runs the same gate.
+On macOS, XCTest and DocC validation require full Xcode developer tools. If the
+active developer directory is Command Line Tools, set `DEVELOPER_DIR` to the
+installed Xcode developer directory for the check command.
 
-`WindowKit` models, protocols, hit-testing abstractions, and geometry primitives are designed to be
-tested without live Core Graphics, AppKit, or Accessibility dependencies. `WindowKitAppKit` keeps
-live system behavior behind small controllers and providers so host apps can substitute their own
-implementations in tests.
+See [AGENTS.md](AGENTS.md) for change guidance and [CONTRIBUTING.md](CONTRIBUTING.md)
+for contribution policy. Release history and private reporting stay in
+[CHANGELOG.md](CHANGELOG.md) and [SECURITY.md](SECURITY.md).
 
 ## Contributing
 

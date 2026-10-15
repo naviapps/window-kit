@@ -6,8 +6,9 @@ public enum WindowPlacement: Equatable, Hashable, Sendable, Codable {
   case fill
   /// Rectangular region in a grid.
   ///
-  /// Columns are zero-based from the left. Rows are zero-based from the bottom in the same
-  /// coordinate space as the selected screen area. ``WindowPlacementCalculator`` clamps invalid
+  /// Columns and rows advance from the area's minimum x and y coordinates. Row zero is at the
+  /// bottom for AppKit coordinates and at the top for Accessibility coordinates.
+  /// ``WindowPlacementCalculator`` clamps invalid
   /// column/row counts, indexes, and spans.
   case grid(columns: Int, rows: Int, column: Int, row: Int, columnSpan: Int, rowSpan: Int)
   /// Centered frame sized as a ratio of the selected screen area.

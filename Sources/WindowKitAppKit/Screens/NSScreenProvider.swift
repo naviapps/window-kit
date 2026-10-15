@@ -8,7 +8,8 @@ public struct NSScreenProvider: WindowScreenProviding {
   /// Creates an AppKit screen provider.
   public init() {}
 
-  /// Returns current AppKit screens as ``WindowScreen`` values.
+  /// Returns current AppKit screens as `WindowScreen` values.
+  /// Frames retain AppKit coordinates, with the origin at the primary display's bottom-left.
   public func screens() -> [WindowScreen] {
     let mainScreen = NSScreen.main
     return NSScreen.screens.map {
