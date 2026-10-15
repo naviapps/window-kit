@@ -6,7 +6,11 @@ Released versions follow semantic versioning.
 
 ## [Unreleased]
 
-No changes yet.
+### Fixed
+
+- Convert AppKit screen geometry to Accessibility coordinates in the default `WindowPlacer`.
+  Placement now respects menu-bar and Dock offsets, and selection/movement supports displays above
+  or below the primary display. Caller-supplied providers retain their own coordinate convention.
 
 ## [2.0.0] - 2026-07-12
 

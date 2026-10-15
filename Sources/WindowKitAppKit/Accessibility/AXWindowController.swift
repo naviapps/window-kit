@@ -29,6 +29,7 @@ public struct AXWindowController: WindowControlling, WindowRoleProviding {
   }
 
   /// Returns the current frame of the target window.
+  /// Coordinates start at the primary display's top-left, with y increasing downward.
   public func frame(for target: WindowTarget) throws -> CGRect {
     try translateAXWindowErrors(for: .readFrame) {
       let window = try access.resolver.windowElement(for: target)
@@ -39,6 +40,7 @@ public struct AXWindowController: WindowControlling, WindowRoleProviding {
   }
 
   /// Sets the frame of the target window.
+  /// Uses the same top-left-origin Accessibility coordinates as ``frame(for:)``.
   public func setFrame(_ frame: CGRect, for target: WindowTarget) throws {
     try translateAXWindowErrors(for: .setFrame) {
       let window = try access.resolver.windowElement(for: target)
