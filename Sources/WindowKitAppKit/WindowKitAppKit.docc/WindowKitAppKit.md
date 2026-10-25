@@ -39,6 +39,12 @@ row and displays above the primary display have negative y coordinates. `AXWindo
 and Core Graphics window snapshots use that space. `NSScreenProvider` retains AppKit's bottom-left
 origin; caller-supplied frame/screen providers and point targets must already agree on coordinates.
 
+When ``AXWindowController`` resolves a known window identifier, it skips elements
+invalidated after the application's window list was read. A closed sibling therefore
+does not prevent finding the target. If no live element matches, resolution reports
+the target as unavailable. Other lookup failures propagate without a retry or a
+fallback to the focused window.
+
 ## Responsibility Boundary
 
 WindowKitAppKit owns AppKit-backed querying and hit-testing initializers,

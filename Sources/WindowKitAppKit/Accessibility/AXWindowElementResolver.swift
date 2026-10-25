@@ -94,12 +94,17 @@ struct AXWindowElementResolver {
     }
 
     for window in windows {
-      if let axId = try accessibilityClient.attributeUInt32(
-        .windowIdentifier,
-        of: window),
-        axId == windowIdentifier
-      {
-        return window
+      do {
+        if let axId = try accessibilityClient.attributeUInt32(
+          .windowIdentifier,
+          of: window),
+          axId == windowIdentifier
+        {
+          return window
+        }
+      } catch AXWindowError.underlyingAccessibilityError(.invalidUIElement) {
+        // A sibling window can close after the application window list was read.
+        continue
       }
     }
 

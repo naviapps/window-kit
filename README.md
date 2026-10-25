@@ -184,6 +184,10 @@ Raw AX resolver details are implementation details. The public Accessibility-bac
 application and window resolution failures preserving the `WindowTarget` that could not be
 resolved. Each failure includes a `WindowAccessibilityOperation`; underlying failures are further
 classified by `WindowAccessibilityOperationFailure` instead of raw AX error values.
+When resolving a known window identifier, invalidated elements in the application's
+window list are skipped so a closed sibling does not prevent finding the target.
+If no live element matches, the target is unavailable. Other lookup failures still
+propagate; the controller does not retry or fall back to the focused window.
 Unrecognized future AXError values are surfaced as
 `WindowAccessibilityOperationFailure.unrecognizedAXError`.
 AX success reported through a failure path is surfaced as

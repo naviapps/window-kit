@@ -421,6 +421,58 @@ final class AXWindowElementResolverTests: XCTestCase {
       XCTAssertEqual(error as? AXWindowError, .invalidAXValue)
     }
   }
+
+  func testWindowIdentifierTargetSkipsInvalidatedSibling() throws {
+    let fixture = makeSiblingLookup(siblingError: .invalidUIElement)
+
+    let resolved = try fixture.resolver.windowElement(for: .windowIdentifier(42))
+
+    XCTAssertTrue(CFEqual(resolved, fixture.targetWindow))
+  }
+
+  func testWindowIdentifierTargetIsUnavailableWhenOnlySiblingWasInvalidated() {
+    let fixture = makeSiblingLookup(siblingError: .invalidUIElement, includesTarget: false)
+
+    XCTAssertThrowsError(try fixture.resolver.windowElement(for: .windowIdentifier(42))) { error in
+      XCTAssertEqual(error as? AXWindowError, .windowNotFound(.windowIdentifier(42)))
+    }
+  }
+
+  func testWindowIdentifierTargetPropagatesOtherSiblingReadFailures() {
+    let fixture = makeSiblingLookup(siblingError: .cannotComplete)
+
+    XCTAssertThrowsError(try fixture.resolver.windowElement(for: .windowIdentifier(42))) { error in
+      XCTAssertEqual(error as? AXWindowError, .underlyingAccessibilityError(.cannotComplete))
+    }
+  }
+
+  private func makeSiblingLookup(siblingError: AXError, includesTarget: Bool = true) -> (
+    resolver: AXWindowElementResolver, targetWindow: AXUIElement
+  ) {
+    let staleWindow = AXUIElementCreateApplication(1234)
+    let targetWindow = AXUIElementCreateApplication(5678)
+    let accessibilityClient = AXClient.testing(copyAttributeValue: { element, attribute, value in
+      value.pointee = nil
+      switch attribute as String {
+      case AXWindowAttribute.windows.accessibilityName:
+        value.pointee = (includesTarget ? [staleWindow, targetWindow] : [staleWindow]) as CFArray
+        return .success
+      case AXWindowAttribute.windowIdentifier.accessibilityName:
+        if CFEqual(element, staleWindow) { return siblingError }
+        value.pointee = NSNumber(value: UInt32(42))
+        return .success
+      default:
+        return .noValue
+      }
+    })
+    let resolver = AXWindowElementResolver(
+      accessibilityClient: accessibilityClient,
+      systemWideElement: AXUIElementCreateSystemWide(),
+      applicationChecker: RunningApplicationCheckerStub(),
+      windowListProvider: WindowListProviderStub(ownerProcessIdentifier: 1234)
+    )
+    return (resolver, targetWindow)
+  }
 }
 
 private final class RecordingRunningApplicationChecker:
